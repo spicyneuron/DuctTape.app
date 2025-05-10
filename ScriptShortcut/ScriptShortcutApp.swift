@@ -132,6 +132,7 @@ struct ScriptShortcutApp: App {
         // Create and configure process
         let process = Process()
         let outputPipe = Pipe()
+
         process.executableURL = URL(fileURLWithPath: "/bin/sh")
         process.arguments = ["-c", script.url.path]
         process.standardOutput = outputPipe
@@ -143,29 +144,56 @@ struct ScriptShortcutApp: App {
         scripts[index].outputLines = []
 
         func appendOutput(_ lines: [String], to index: Int) {
+            print("appendOutput: \(lines)")
+
             scripts[index].outputLines.append(contentsOf: lines)
             if scripts[index].outputLines.count > maxOutputLines {
                 scripts[index].outputLines = Array(scripts[index].outputLines.suffix(maxOutputLines))
             }
         }
 
-        outputPipe.fileHandleForReading.readabilityHandler = { fileHandle in
-            guard let data = try? fileHandle.read(upToCount: 1024),
-                  let output = String(data: data, encoding: .utf8) else { return }
-            let lines = output.components(separatedBy: .newlines).filter { !$0.isEmpty }
-            DispatchQueue.main.async {
-                if let scriptIndex = self.scripts.firstIndex(where: { $0.id == script.id }) {
-                    appendOutput(lines, to: scriptIndex)
+        // Set up pipe handling before running the process
+        let fileHandle = outputPipe.fileHandleForReading
+
+        // Make the pipe's file descriptor non-blocking
+        var flags = fcntl(fileHandle.fileDescriptor, F_GETFL)
+        flags = flags | O_NONBLOCK
+        let result = fcntl(fileHandle.fileDescriptor, F_SETFL, flags)
+        if result == -1 {
+            print("Error setting non-blocking mode: \(String(cString: strerror(errno)))")
+        }
+
+        // Create a dispatch source to monitor when data is available
+        let dispatchSource = DispatchSource.makeReadSource(
+            fileDescriptor: fileHandle.fileDescriptor,
+            queue: DispatchQueue.global(qos: .userInitiated)
+        )
+
+        dispatchSource.setEventHandler {
+            // Read available data from the pipe
+            let data = fileHandle.availableData
+            if !data.isEmpty, let output = String(data: data, encoding: .utf8) {
+                let lines = output.components(separatedBy: .newlines).filter { !$0.isEmpty }
+                DispatchQueue.main.async {
+                    if let scriptIndex = self.scripts.firstIndex(where: { $0.id == script.id }) {
+                        appendOutput(lines, to: scriptIndex)
+                    }
                 }
             }
         }
+
+        dispatchSource.setCancelHandler {
+            try? fileHandle.close()
+        }
+
+        dispatchSource.resume()
 
         // Start the process
         do {
             try process.run()
             DispatchQueue.global(qos: .background).async {
                 process.waitUntilExit()
-                outputPipe.fileHandleForReading.readabilityHandler = nil
+                dispatchSource.cancel()
                 DispatchQueue.main.async {
                     guard let scriptIndex = self.scripts.firstIndex(where: { $0.id == script.id }) else { return }
                     self.scripts[scriptIndex].status = process.terminationStatus == 0 ? .idle : .error
@@ -176,6 +204,7 @@ struct ScriptShortcutApp: App {
             scripts[index].status = .error
             appendOutput(["Failed to run script: \(error.localizedDescription)"], to: index)
             print("Failed to run script: \(error)")
+            dispatchSource.cancel()
         }
     }
 
