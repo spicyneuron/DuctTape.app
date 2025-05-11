@@ -1,6 +1,6 @@
 //
-//  ScriptShortcutApp.swift
-//  ScriptShortcut
+//  DuctTapeApp.swift
+//  DuctTape
 //
 
 import SwiftUI
@@ -19,7 +19,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 }
 
 @main
-struct ScriptShortcutApp: App {
+struct DuctTapeApp: App {
     @StateObject private var scriptManager = ScriptManager.shared
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
