@@ -8,8 +8,13 @@ import Foundation
 import AppKit
 
 class AppDelegate: NSObject, NSApplicationDelegate {
-    func applicationWillTerminate(_ notification: Notification) {
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        // Slight delay to ensure all scripts are terminated
         ScriptManager.shared.terminateAll()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            NSApp.reply(toApplicationShouldTerminate: true)
+        }
+        return .terminateLater
     }
 }
 
