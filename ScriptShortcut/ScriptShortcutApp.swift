@@ -6,49 +6,19 @@
 import SwiftUI
 import Foundation
 
-// Config
-let maxOutputLines = 20
-
-enum ScriptStatus {
-    case idle
-    case running
-    case error
-
-    var icon: String {
-        switch self {
-        case .idle: return "⚪️"
-        case .running: return "🟢"
-        case .error: return "🔴"
-        }
-    }
-}
-
-struct ScriptItem: Identifiable {
-    let id = UUID()
-    let url: URL
-    var status: ScriptStatus = .idle
-    var process: Process? = nil
-    var outputLines: [String] = []
-}
-
 @main
 struct ScriptShortcutApp: App {
-    @State private var scripts: [ScriptItem] = []
-
-    init() {
-        let urls = loadScriptURLs()
-        _scripts = State(initialValue: urls.map { ScriptItem(url: $0) })
-    }
+    @StateObject private var scriptManager = ScriptManager()
 
     var body: some Scene {
         MenuBarExtra("▶") {
-            if !scripts.isEmpty {
-                ForEach(scripts) { script in
+            if !scriptManager.scripts.isEmpty {
+                ForEach(scriptManager.scripts) { script in
                     Menu("\(script.status.icon) \(script.url.lastPathComponent)") {
                         if script.status == .running {
-                            Button("Stop") { stopScript(script) }
+                            Button("Stop") { scriptManager.stopScript(script) }
                         } else {
-                            Button("Run") { runScript(script) }
+                            Button("Run") { scriptManager.runScript(script) }
                         }
 
                         Divider()
@@ -78,26 +48,16 @@ struct ScriptShortcutApp: App {
 
                 if openPanel.runModal() == .OK {
                     if let url = openPanel.url {
-                        let newScript = ScriptItem(url: url)
-                        scripts.append(newScript)
-                        scripts.sort { $0.url.lastPathComponent.localizedCaseInsensitiveCompare($1.url.lastPathComponent) == .orderedAscending }
-                        saveScripts()
+                        scriptManager.addScript(url: url)
                     }
                 }
             }
 
-            if !scripts.isEmpty {
+            if !scriptManager.scripts.isEmpty {
                 Menu("Remove script") {
-                    ForEach(scripts) { script in
+                    ForEach(scriptManager.scripts) { script in
                         Button(script.url.lastPathComponent) {
-                            if let index = scripts.firstIndex(where: { $0.id == script.id }) {
-                                // Terminate process if running
-                                if scripts[index].process != nil && scripts[index].process!.isRunning {
-                                    scripts[index].process?.terminate()
-                                }
-                                scripts.remove(at: index)
-                                saveScripts()
-                            }
+                            scriptManager.removeScript(script: script)
                         }
                     }
                 }
@@ -106,94 +66,9 @@ struct ScriptShortcutApp: App {
             Divider()
 
             Button("Close") {
-                // Terminate all running processes before quitting
-                for i in 0..<scripts.count {
-                    if scripts[i].process != nil && scripts[i].process!.isRunning {
-                        scripts[i].process?.terminate()
-                    }
-                }
+                scriptManager.terminateAll()
                 NSApplication.shared.terminate(nil)
             }
         }
-    }
-
-    private func runScript(_ script: ScriptItem) {
-        guard let index = scripts.firstIndex(where: { $0.id == script.id }) else { return }
-
-        let process = Process()
-        let outputPipe = Pipe()
-        process.executableURL = URL(fileURLWithPath: "/bin/sh")
-        process.arguments = ["-c", script.url.path]
-        process.standardOutput = outputPipe
-        process.standardError = outputPipe
-
-        scripts[index].process = process
-        scripts[index].status = .running
-        scripts[index].outputLines = []
-
-        // Handle output
-        let fileHandle = outputPipe.fileHandleForReading
-        fileHandle.readabilityHandler = { handle in
-            let data = handle.availableData
-            if !data.isEmpty, let output = String(data: data, encoding: .utf8) {
-                let lines = output.components(separatedBy: .newlines).filter { !$0.isEmpty }
-                DispatchQueue.main.async {
-                    if let scriptIndex = self.scripts.firstIndex(where: { $0.id == script.id }) {
-                        self.appendOutput(lines, to: scriptIndex)
-                    }
-                }
-            }
-        }
-
-        // Handle process termination
-        process.terminationHandler = { proc in
-            fileHandle.readabilityHandler = nil
-            DispatchQueue.main.async {
-                guard let scriptIndex = self.scripts.firstIndex(where: { $0.id == script.id }) else { return }
-                if proc.terminationReason == .uncaughtSignal {
-                    self.scripts[scriptIndex].status = .idle // Process terminated by user
-                } else {
-                    self.scripts[scriptIndex].status = proc.terminationStatus == 0 ? .idle : .error
-                }
-                self.scripts[scriptIndex].process = nil
-            }
-        }
-
-        do {
-            try process.run()
-        } catch {
-            scripts[index].status = .error
-            appendOutput(["Failed to run script: \(error.localizedDescription)"], to: index)
-            fileHandle.readabilityHandler = nil
-        }
-    }
-
-    private func appendOutput(_ lines: [String], to index: Int) {
-        scripts[index].outputLines.append(contentsOf: lines)
-        if scripts[index].outputLines.count > maxOutputLines {
-            scripts[index].outputLines = Array(scripts[index].outputLines.suffix(maxOutputLines))
-        }
-    }
-
-    private func stopScript(_ script: ScriptItem) {
-        guard let index = scripts.firstIndex(where: { $0.id == script.id }),
-              let process = scripts[index].process,
-              process.isRunning else { return }
-
-        process.terminate()
-        scripts[index].outputLines.append("Process terminated by user")
-    }
-
-    private func saveScripts() {
-        let scriptPaths = scripts.map { $0.url.path }
-        UserDefaults.standard.set(scriptPaths, forKey: "savedScripts")
-    }
-
-    private func loadScriptURLs() -> [URL] {
-        if let scriptPaths = UserDefaults.standard.stringArray(forKey: "savedScripts") {
-            let urls = scriptPaths.map { URL(fileURLWithPath: $0) }
-            return urls.sorted { $0.lastPathComponent.localizedCaseInsensitiveCompare($1.lastPathComponent) == .orderedAscending }
-        }
-        return []
     }
 }
