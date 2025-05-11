@@ -22,8 +22,10 @@ struct ScriptShortcutApp: App {
                         }
 
                         Section("Path") {
-                            Text(script.url.path)
-                                .font(.system(.body, design: .monospaced))
+                            Button(script.url.path) {
+                                NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: script.url.deletingLastPathComponent().path)
+                            }
+                            .font(.system(.body, design: .monospaced))
                         }
 
                         Section("PID") {
