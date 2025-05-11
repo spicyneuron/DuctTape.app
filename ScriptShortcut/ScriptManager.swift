@@ -4,6 +4,9 @@ import SwiftUI
 class ScriptManager: ObservableObject {
     @Published var scripts: [ScriptItem] = []
 
+    // Singleton instance
+    static let shared = ScriptManager()
+
     init() {
         scripts = loadScripts()
     }

@@ -5,10 +5,18 @@
 
 import SwiftUI
 import Foundation
+import AppKit
+
+class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationWillTerminate(_ notification: Notification) {
+        ScriptManager.shared.terminateAll()
+    }
+}
 
 @main
 struct ScriptShortcutApp: App {
-    @StateObject private var scriptManager = ScriptManager()
+    @StateObject private var scriptManager = ScriptManager.shared
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
         MenuBarExtra("▶") {
@@ -81,7 +89,6 @@ struct ScriptShortcutApp: App {
             Divider()
 
             Button("Close") {
-                scriptManager.terminateAll()
                 NSApplication.shared.terminate(nil)
             }
         }
