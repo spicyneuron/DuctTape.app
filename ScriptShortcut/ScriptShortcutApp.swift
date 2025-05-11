@@ -9,7 +9,6 @@ import Foundation
 // Config
 let maxOutputLines = 20
 
-// Script status enum
 enum ScriptStatus {
     case idle
     case running
@@ -24,7 +23,6 @@ enum ScriptStatus {
     }
 }
 
-// Script model
 struct ScriptItem: Identifiable {
     let id = UUID()
     let url: URL
@@ -45,23 +43,16 @@ struct ScriptShortcutApp: App {
     var body: some Scene {
         MenuBarExtra("▶") {
             if !scripts.isEmpty {
-                // Scripts
                 ForEach(scripts) { script in
                     Menu("\(script.status.icon) \(script.url.lastPathComponent)") {
-                        // Run/Stop Button
                         if script.status == .running {
-                            Button("Stop") {
-                                stopScript(script)
-                            }
+                            Button("Stop") { stopScript(script) }
                         } else {
-                            Button("Run") {
-                                runScript(script)
-                            }
+                            Button("Run") { runScript(script) }
                         }
 
                         Divider()
 
-                        // Output display
                         Section("Output") {
                             if script.outputLines.isEmpty {
                                 Text("...")
@@ -129,82 +120,58 @@ struct ScriptShortcutApp: App {
     private func runScript(_ script: ScriptItem) {
         guard let index = scripts.firstIndex(where: { $0.id == script.id }) else { return }
 
-        // Create and configure process
         let process = Process()
         let outputPipe = Pipe()
-
         process.executableURL = URL(fileURLWithPath: "/bin/sh")
         process.arguments = ["-c", script.url.path]
         process.standardOutput = outputPipe
         process.standardError = outputPipe
 
-        // Update ScriptItem
-        scripts[index].status = .running
         scripts[index].process = process
+        scripts[index].status = .running
         scripts[index].outputLines = []
 
-        func appendOutput(_ lines: [String], to index: Int) {
-            print("appendOutput: \(lines)")
-
-            scripts[index].outputLines.append(contentsOf: lines)
-            if scripts[index].outputLines.count > maxOutputLines {
-                scripts[index].outputLines = Array(scripts[index].outputLines.suffix(maxOutputLines))
-            }
-        }
-
-        // Set up pipe handling before running the process
+        // Handle output
         let fileHandle = outputPipe.fileHandleForReading
-
-        // Make the pipe's file descriptor non-blocking
-        var flags = fcntl(fileHandle.fileDescriptor, F_GETFL)
-        flags = flags | O_NONBLOCK
-        let result = fcntl(fileHandle.fileDescriptor, F_SETFL, flags)
-        if result == -1 {
-            print("Error setting non-blocking mode: \(String(cString: strerror(errno)))")
-        }
-
-        // Create a dispatch source to monitor when data is available
-        let dispatchSource = DispatchSource.makeReadSource(
-            fileDescriptor: fileHandle.fileDescriptor,
-            queue: DispatchQueue.global(qos: .userInitiated)
-        )
-
-        dispatchSource.setEventHandler {
-            // Read available data from the pipe
-            let data = fileHandle.availableData
+        fileHandle.readabilityHandler = { handle in
+            let data = handle.availableData
             if !data.isEmpty, let output = String(data: data, encoding: .utf8) {
                 let lines = output.components(separatedBy: .newlines).filter { !$0.isEmpty }
                 DispatchQueue.main.async {
                     if let scriptIndex = self.scripts.firstIndex(where: { $0.id == script.id }) {
-                        appendOutput(lines, to: scriptIndex)
+                        self.appendOutput(lines, to: scriptIndex)
                     }
                 }
             }
         }
 
-        dispatchSource.setCancelHandler {
-            try? fileHandle.close()
+        // Handle process termination
+        process.terminationHandler = { proc in
+            fileHandle.readabilityHandler = nil
+            DispatchQueue.main.async {
+                guard let scriptIndex = self.scripts.firstIndex(where: { $0.id == script.id }) else { return }
+                if proc.terminationReason == .uncaughtSignal {
+                    self.scripts[scriptIndex].status = .idle // Process terminated by user
+                } else {
+                    self.scripts[scriptIndex].status = proc.terminationStatus == 0 ? .idle : .error
+                }
+                self.scripts[scriptIndex].process = nil
+            }
         }
 
-        dispatchSource.resume()
-
-        // Start the process
         do {
             try process.run()
-            DispatchQueue.global(qos: .background).async {
-                process.waitUntilExit()
-                dispatchSource.cancel()
-                DispatchQueue.main.async {
-                    guard let scriptIndex = self.scripts.firstIndex(where: { $0.id == script.id }) else { return }
-                    self.scripts[scriptIndex].status = process.terminationStatus == 0 ? .idle : .error
-                    self.scripts[scriptIndex].process = nil
-                }
-            }
         } catch {
             scripts[index].status = .error
             appendOutput(["Failed to run script: \(error.localizedDescription)"], to: index)
-            print("Failed to run script: \(error)")
-            dispatchSource.cancel()
+            fileHandle.readabilityHandler = nil
+        }
+    }
+
+    private func appendOutput(_ lines: [String], to index: Int) {
+        scripts[index].outputLines.append(contentsOf: lines)
+        if scripts[index].outputLines.count > maxOutputLines {
+            scripts[index].outputLines = Array(scripts[index].outputLines.suffix(maxOutputLines))
         }
     }
 
@@ -215,8 +182,6 @@ struct ScriptShortcutApp: App {
 
         process.terminate()
         scripts[index].outputLines.append("Process terminated by user")
-        scripts[index].status = .idle
-        scripts[index].process = nil
     }
 
     private func saveScripts() {
