@@ -21,7 +21,20 @@ struct ScriptShortcutApp: App {
                             Button("Run") { scriptManager.runScript(script) }
                         }
 
-                        Divider()
+                        Section("Path") {
+                            Text(script.url.path)
+                                .font(.system(.body, design: .monospaced))
+                        }
+
+                        Section("PID") {
+                            if let process = script.process, process.isRunning {
+                                Text(String(process.processIdentifier))
+                                    .font(.system(.body, design: .monospaced))
+                            } else {
+                                Text("Not running")
+                                    .font(.system(.body, design: .monospaced))
+                            }
+                        }
 
                         Section("Output") {
                             if script.outputLines.isEmpty {
