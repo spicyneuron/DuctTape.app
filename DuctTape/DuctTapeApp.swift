@@ -93,6 +93,22 @@ struct DuctTapeApp: App {
 
             Divider()
 
+            Button("Settings...") {
+                // Create and show the settings window
+                var window = NSWindow(
+                    contentRect: NSRect(x: 0, y: 0, width: 300, height: 150), // Initial size, will be adapted by SettingsView
+                    styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                    backing: .buffered, defer: false)
+                window.center()
+                window.setFrameAutosaveName("SettingsWindow")
+                window.contentView = NSHostingView(rootView: SettingsView())
+                window.isReleasedWhenClosed = false // Important to keep the window instance if you plan to re-show it
+                window.makeKeyAndOrderFront(nil)
+                NSApp.activate(ignoringOtherApps: true) // Bring the app to the foreground
+            }
+
+            Divider()
+
             Button("Close") {
                 NSApplication.shared.terminate(nil)
             }
