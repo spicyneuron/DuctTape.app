@@ -30,6 +30,7 @@ struct DuctTapeApp: App {
                     Menu("\(script.status.icon) \(script.url.lastPathComponent)") {
                         if script.status == .running {
                             Button("Stop") { scriptManager.stopScript(script) }
+                            Button("Restart") { scriptManager.restartScript(script) }
                         } else {
                             Button("Run") { scriptManager.runScript(script) }
                         }
