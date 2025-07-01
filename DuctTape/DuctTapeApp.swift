@@ -39,6 +39,9 @@ struct DuctTapeApp: App {
                                 NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: script.url.deletingLastPathComponent().path)
                             }
                             .font(.system(.body, design: .monospaced))
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .frame(maxWidth: outputSectionMaxWidth, alignment: .leading)
                         }
 
                         Section("PID") {
@@ -56,10 +59,19 @@ struct DuctTapeApp: App {
                                 Text("...")
                                     .font(.system(.body, design: .monospaced))
                             } else {
-                                ForEach(script.outputLines, id: \.self) { line in
-                                    Text(line)
-                                        .font(.system(.body, design: .monospaced))
+                                ScrollView(.vertical, showsIndicators: true) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        ForEach(script.outputLines, id: \.self) { line in
+                                            Text(line.count > maxOutputLineLength ? String(line.prefix(maxOutputLineLength)) + "..." : line)
+                                                .font(.system(.body, design: .monospaced))
+                                                .lineLimit(1)
+                                                .truncationMode(.tail)
+                                                .frame(maxWidth: outputSectionMaxWidth, alignment: .leading)
+                                        }
+                                    }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                                 }
+                                .frame(maxWidth: outputSectionMaxWidth, maxHeight: outputSectionMaxHeight)
                             }
                         }
                     }

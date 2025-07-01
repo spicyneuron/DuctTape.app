@@ -2,6 +2,9 @@ import Foundation
 
 // Config
 let maxOutputLines = 20
+let maxOutputLineLength = 80
+let outputSectionMaxWidth: CGFloat = 350
+let outputSectionMaxHeight: CGFloat = 150
 
 enum ScriptStatus {
     case idle
