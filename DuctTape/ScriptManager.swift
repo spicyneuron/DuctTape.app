@@ -14,16 +14,18 @@ class ScriptManager: ObservableObject {
     // Computed property to get the appropriate SF symbol
     var appIcon: String {
         let hasErrors = scripts.contains(where: { $0.status == .error })
-        let hasRunning = scripts.contains(where: { $0.status == .running })
+        let activeScriptCount = scripts.filter { $0.status == .running }.count
 
-        if hasErrors && hasRunning {
-            return "app.badge.fill"
+        if hasErrors && activeScriptCount > 0 {
+            return "exclamationmark.circle.fill"
         } else if hasErrors {
-            return "app.badge"
-        } else if hasRunning {
-            return "app.fill"
+            return "exclamationmark.circle"
+        } else if activeScriptCount == 0 {
+            return "pause.circle"
+        } else if activeScriptCount <= 50 {
+            return "\(activeScriptCount).circle.fill"
         } else {
-            return "app"
+            return "asterisk.circle.fill"
         }
     }
 
