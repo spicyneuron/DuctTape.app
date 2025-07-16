@@ -23,6 +23,9 @@ struct DuctTapeApp: App {
     @StateObject private var scriptManager = ScriptManager.shared
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
+    // Static property to hold the settings window instance
+    private static var settingsWindow: NSWindow?
+
     var body: some Scene {
         MenuBarExtra("▶") {
             if !scriptManager.scripts.isEmpty {
@@ -101,16 +104,23 @@ struct DuctTapeApp: App {
             Divider()
 
             Button("Settings...") {
-                let window = NSWindow(
-                    contentRect: NSRect(x: 0, y: 0, width: 300, height: 200), // Initial size, will be adapted by SettingsView
-                    styleMask: [.titled, .closable, .miniaturizable, .resizable],
-                    backing: .buffered, defer: false)
-                window.center()
-                window.setFrameAutosaveName("SettingsWindow")
-                window.contentView = NSHostingView(rootView: SettingsView())
-                window.isReleasedWhenClosed = false // Important to keep the window instance if you plan to re-show it
-                window.makeKeyAndOrderFront(nil)
-                NSApp.activate(ignoringOtherApps: true) // Bring the app to the foreground
+                if let existingWindow = DuctTapeApp.settingsWindow, existingWindow.isVisible {
+                    existingWindow.makeKeyAndOrderFront(nil)
+                    NSApp.activate(ignoringOtherApps: true)
+                } else {
+                    let window = NSWindow(
+                        contentRect: NSRect(x: 0, y: 0, width: 300, height: 200),
+                        styleMask: [.titled, .closable],
+                        backing: .buffered, defer: false)
+                    window.center()
+                    window.setFrameAutosaveName("SettingsWindow")
+                    window.contentView = NSHostingView(rootView: SettingsView())
+                    window.isReleasedWhenClosed = false // Important to keep the window instance if you plan to re-show it
+
+                    DuctTapeApp.settingsWindow = window
+                    window.makeKeyAndOrderFront(nil)
+                    NSApp.activate(ignoringOtherApps: true)
+                }
             }
 
             Divider()
