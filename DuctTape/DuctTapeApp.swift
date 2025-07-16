@@ -30,6 +30,7 @@ struct DuctTapeApp: App {
                     Menu("\(script.status.icon) \(script.url.lastPathComponent)") {
                         if script.status == .running {
                             Button("Stop") { scriptManager.stopScript(script) }
+                            Button("Restart") { scriptManager.restartScript(script) }
                         } else {
                             Button("Run") { scriptManager.runScript(script) }
                         }
@@ -39,6 +40,8 @@ struct DuctTapeApp: App {
                                 NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: script.url.deletingLastPathComponent().path)
                             }
                             .font(.system(.body, design: .monospaced))
+                            .lineLimit(1)
+                            .truncationMode(.middle)
                         }
 
                         Section("PID") {
@@ -56,13 +59,17 @@ struct DuctTapeApp: App {
                                 Text("...")
                                     .font(.system(.body, design: .monospaced))
                             } else {
-                                ForEach(script.outputLines, id: \.self) { line in
-                                    Text(line)
-                                        .font(.system(.body, design: .monospaced))
+                                let displayLines = script.outputLines.suffix(maxOutputLines)
+                                let truncatedLines = displayLines.map { line in
+                                    line.count > maxOutputLineLength ? String(line.prefix(maxOutputLineLength)) + "..." : line
                                 }
+                                Text(truncatedLines.joined(separator: "\n"))
+                                    .font(.system(.body, design: .monospaced))
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                         }
                     }
+                    .frame(maxWidth: maxMenuWidth, alignment: .leading)
                 }
 
                 Divider()

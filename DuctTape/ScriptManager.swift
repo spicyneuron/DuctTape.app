@@ -110,6 +110,16 @@ class ScriptManager: ObservableObject {
         scripts[index].outputLines.append("Process terminated by user")
     }
 
+    func restartScript(_ script: ScriptItem) {
+        // First stop the script if it's running
+        stopScript(script)
+        
+        // Wait a brief moment for the process to fully terminate
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.runScript(script)
+        }
+    }
+
     func terminateAll() {
         for i in 0..<scripts.count {
             if scripts[i].process != nil && scripts[i].process!.isRunning {
