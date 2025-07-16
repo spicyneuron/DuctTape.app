@@ -46,7 +46,7 @@ struct DuctTapeApp: App {
     }
 
     var body: some Scene {
-        MenuBarExtra("▶") {
+        MenuBarExtra("DuctTape", systemImage: scriptManager.appIcon) {
             if !scriptManager.scripts.isEmpty {
                 ForEach(scriptManager.scripts) { script in
                     Menu("\(script.status.icon) \(script.url.lastPathComponent)") {

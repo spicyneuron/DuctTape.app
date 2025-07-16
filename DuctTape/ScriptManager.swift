@@ -11,6 +11,22 @@ class ScriptManager: ObservableObject {
         scripts = loadScripts()
     }
 
+    // Computed property to get the appropriate SF symbol
+    var appIcon: String {
+        let hasErrors = scripts.contains(where: { $0.status == .error })
+        let hasRunning = scripts.contains(where: { $0.status == .running })
+
+        if hasErrors && hasRunning {
+            return "app.badge.fill"
+        } else if hasErrors {
+            return "app.badge"
+        } else if hasRunning {
+            return "app.fill"
+        } else {
+            return "app"
+        }
+    }
+
     private func loadScripts() -> [ScriptItem] {
         if let scriptPaths = UserDefaults.standard.stringArray(forKey: "savedScripts") {
             let urls = scriptPaths.map { URL(fileURLWithPath: $0) }
@@ -113,7 +129,7 @@ class ScriptManager: ObservableObject {
     func restartScript(_ script: ScriptItem) {
         // First stop the script if it's running
         stopScript(script)
-        
+
         // Wait a brief moment for the process to fully terminate
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             self.runScript(script)
