@@ -101,8 +101,7 @@ struct DuctTapeApp: App {
             Divider()
 
             Button("Settings...") {
-                // Create and show the settings window
-                var window = NSWindow(
+                let window = NSWindow(
                     contentRect: NSRect(x: 0, y: 0, width: 300, height: 150), // Initial size, will be adapted by SettingsView
                     styleMask: [.titled, .closable, .miniaturizable, .resizable],
                     backing: .buffered, defer: false)

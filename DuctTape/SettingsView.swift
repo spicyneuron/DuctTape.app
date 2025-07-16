@@ -8,7 +8,7 @@ struct SettingsView: View {
     var body: some View {
         VStack {
             Toggle("Open on login", isOn: $openOnLogin)
-                .onChange(of: openOnLogin) { newValue in
+                .onChange(of: openOnLogin) { _, newValue in
                     toggleLaunchAtLogin(enabled: newValue)
                 }
                 .padding()
@@ -24,7 +24,7 @@ struct SettingsView: View {
     }
 
     private func updateStatusAndToggle() {
-        serviceStatus = SMAppService.mainAppService.status
+        serviceStatus = SMAppService.mainApp.status
         let isEnabled = (serviceStatus == .enabled)
         if openOnLogin != isEnabled { // Only update if different to avoid potential loop if called rapidly
              openOnLogin = isEnabled
@@ -35,32 +35,26 @@ struct SettingsView: View {
     private func toggleLaunchAtLogin(enabled: Bool) {
         UserDefaults.standard.set(enabled, forKey: "openOnLoginUserChoice")
 
-        Task {
-            do {
-                if enabled {
-                    if SMAppService.mainAppService.status != .enabled {
-                        try await SMAppService.mainAppService.register()
-                        print("Successfully registered login item.")
-                    }
-                } else {
-                    if SMAppService.mainAppService.status == .enabled {
-                        try await SMAppService.mainAppService.unregister()
-                        print("Successfully unregistered login item.")
-                    }
+        do {
+            if enabled {
+                if SMAppService.mainApp.status != .enabled {
+                    try SMAppService.mainApp.register()
+                    print("Successfully registered login item.")
                 }
-            } catch {
-                print("Failed to \(enabled ? "register" : "unregister") login item: \(error)")
-                // Revert UI and preference if operation failed
-                DispatchQueue.main.async {
-                    self.openOnLogin = !enabled
-                    UserDefaults.standard.set(!enabled, forKey: "openOnLoginUserChoice")
+            } else {
+                if SMAppService.mainApp.status == .enabled {
+                    try SMAppService.mainApp.unregister()
+                    print("Successfully unregistered login item.")
                 }
             }
-            // Refresh status from the service after attempting an operation
-            DispatchQueue.main.async {
-                self.updateStatusAndToggle()
-            }
+        } catch {
+            print("Failed to \(enabled ? "register" : "unregister") login item: \(error)")
+            // Revert UI and preference if operation failed
+            self.openOnLogin = !enabled
+            UserDefaults.standard.set(!enabled, forKey: "openOnLoginUserChoice")
         }
+        // Refresh status from the service after attempting an operation
+        self.updateStatusAndToggle()
     }
 }
 
