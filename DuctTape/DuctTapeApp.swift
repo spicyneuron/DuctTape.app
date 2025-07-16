@@ -32,13 +32,12 @@ struct DuctTapeApp: App {
             NSApp.activate(ignoringOtherApps: true)
         } else {
             let window = NSWindow(
-                contentRect: NSRect(x: 0, y: 0, width: 300, height: 200),
+                contentRect: NSRect.zero,
                 styleMask: [.titled, .closable],
                 backing: .buffered, defer: false)
-            window.center()
             window.setFrameAutosaveName("SettingsWindow")
             window.contentView = NSHostingView(rootView: SettingsView())
-            window.isReleasedWhenClosed = false // Important to keep the window instance if you plan to re-show it
+            window.center()
 
             DuctTapeApp.settingsWindow = window
             window.makeKeyAndOrderFront(nil)

@@ -2,13 +2,14 @@ import SwiftUI
 import ServiceManagement
 
 struct SettingsView: View {
-    @State private var openOnLogin = false
-    @State private var hideDockIcon = false
-    @State private var serviceStatus: SMAppService.Status = .notRegistered // To reflect actual status
+    @AppStorage("openOnLoginUserChoice") private var openOnLogin = false
+    @AppStorage("hideDockIconUserChoice") private var hideDockIcon = false
+
+    @State private var showingAlert = false
+    @State private var alertMessage = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            // Header section
             VStack(alignment: .leading, spacing: 4) {
                 Text("DuctTape Settings")
                     .font(.title2)
@@ -19,81 +20,95 @@ struct SettingsView: View {
                     .foregroundColor(.secondary)
             }
 
-            // Settings section
-            VStack(alignment: .leading, spacing: 12) {
-                Toggle("Open on login", isOn: $openOnLogin)
-                    .onChange(of: openOnLogin) { _, newValue in
-                        toggleLaunchAtLogin(enabled: newValue)
-                    }
+            VStack(alignment: .leading, spacing: 16) {
+                SettingRow(
+                    icon: "power",
+                    title: "Open on login",
+                    description: "We'll skip the small talk",
+                    isOn: $openOnLogin,
+                    onToggle: toggleLaunchAtLogin
+                )
 
-                Toggle("Hide dock icon", isOn: $hideDockIcon)
-                    .onChange(of: hideDockIcon) { _, newValue in
-                        toggleDockIcon(hidden: newValue)
-                    }
+                SettingRow(
+                    icon: "dock.rectangle",
+                    title: "Hide dock icon",
+                    description: "Become one with the shadows",
+                    isOn: $hideDockIcon,
+                    onToggle: toggleDockIcon
+                )
             }
 
             Spacer()
         }
-        .frame(width: 350, height: 200, alignment: .topLeading)
-        .padding(.top, 20)
-        .padding(.leading, 20)
-        .padding(.trailing, 20)
-        .padding(.bottom, 10)
-        .onAppear {
-            updateStatusAndToggle()
-            // Initialize toggles from UserDefaults
-            openOnLogin = UserDefaults.standard.bool(forKey: "openOnLoginUserChoice")
-            hideDockIcon = UserDefaults.standard.bool(forKey: "hideDockIconUserChoice")
+        .frame(minWidth: 300, minHeight: 220, alignment: .topLeading)
+        .padding(24)
+        .alert("Settings Error", isPresented: $showingAlert) {
+            Button("OK") { }
+        } message: {
+            Text(alertMessage)
         }
-    }
-
-    private func updateStatusAndToggle() {
-        serviceStatus = SMAppService.mainApp.status
-        let isEnabled = (serviceStatus == .enabled)
-        if openOnLogin != isEnabled { // Only update if different to avoid potential loop if called rapidly
-             openOnLogin = isEnabled
-        }
-        UserDefaults.standard.set(isEnabled, forKey: "openOnLoginUserChoice")
     }
 
     private func toggleLaunchAtLogin(enabled: Bool) {
-        UserDefaults.standard.set(enabled, forKey: "openOnLoginUserChoice")
-
         do {
             if enabled {
-                if SMAppService.mainApp.status != .enabled {
-                    try SMAppService.mainApp.register()
-                    print("Successfully registered login item.")
-                }
+                try SMAppService.mainApp.register()
             } else {
-                if SMAppService.mainApp.status == .enabled {
-                    try SMAppService.mainApp.unregister()
-                    print("Successfully unregistered login item.")
-                }
+                try SMAppService.mainApp.unregister()
             }
         } catch {
-            print("Failed to \(enabled ? "register" : "unregister") login item: \(error)")
-            // Revert UI and preference if operation failed
-            self.openOnLogin = !enabled
-            UserDefaults.standard.set(!enabled, forKey: "openOnLoginUserChoice")
+            alertMessage = "Failed to \(enabled ? "enable" : "disable") launch at login: \(error.localizedDescription)"
+            showingAlert = true
         }
-        // Refresh status from the service after attempting an operation
-        self.updateStatusAndToggle()
     }
 
     private func toggleDockIcon(hidden: Bool) {
-        UserDefaults.standard.set(hidden, forKey: "hideDockIconUserChoice")
+        let policy: NSApplication.ActivationPolicy = hidden ? .accessory : .regular
+        let success = NSApplication.shared.setActivationPolicy(policy)
 
-        if hidden {
-            NSApplication.shared.setActivationPolicy(.accessory)
-        } else {
-            NSApplication.shared.setActivationPolicy(.regular)
+        if !success {
+            alertMessage = "Failed to \(hidden ? "hide" : "show") dock icon"
+            showingAlert = true
         }
     }
 }
 
-struct SettingsView_Previews: PreviewProvider {
-    static var previews: some View {
-        SettingsView()
+struct SettingRow: View {
+    let icon: String
+    let title: String
+    let description: String
+    @Binding var isOn: Bool
+    let onToggle: (Bool) -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .foregroundColor(.secondary)
+                .frame(width: 20)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.body)
+
+                Text(description)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            Toggle("", isOn: Binding(
+                get: { isOn },
+                set: { newValue in
+                    isOn = newValue
+                    onToggle(newValue)
+                }
+            ))
+            .labelsHidden()
+        }
     }
+}
+
+#Preview {
+    SettingsView()
 }
