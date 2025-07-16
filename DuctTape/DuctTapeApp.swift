@@ -41,7 +41,6 @@ struct DuctTapeApp: App {
                             .font(.system(.body, design: .monospaced))
                             .lineLimit(1)
                             .truncationMode(.middle)
-                            .frame(maxWidth: outputSectionMaxWidth, alignment: .leading)
                         }
 
                         Section("PID") {
@@ -59,22 +58,17 @@ struct DuctTapeApp: App {
                                 Text("...")
                                     .font(.system(.body, design: .monospaced))
                             } else {
-                                ScrollView(.vertical, showsIndicators: true) {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        ForEach(script.outputLines, id: \.self) { line in
-                                            Text(line.count > maxOutputLineLength ? String(line.prefix(maxOutputLineLength)) + "..." : line)
-                                                .font(.system(.body, design: .monospaced))
-                                                .lineLimit(1)
-                                                .truncationMode(.tail)
-                                                .frame(maxWidth: outputSectionMaxWidth, alignment: .leading)
-                                        }
-                                    }
-                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                let displayLines = script.outputLines.suffix(maxOutputLines)
+                                let truncatedLines = displayLines.map { line in
+                                    line.count > maxOutputLineLength ? String(line.prefix(maxOutputLineLength)) + "..." : line
                                 }
-                                .frame(maxWidth: outputSectionMaxWidth, maxHeight: outputSectionMaxHeight)
+                                Text(truncatedLines.joined(separator: "\n"))
+                                    .font(.system(.body, design: .monospaced))
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                         }
                     }
+                    .frame(maxWidth: maxMenuWidth, alignment: .leading)
                 }
 
                 Divider()
