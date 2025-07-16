@@ -26,6 +26,26 @@ struct DuctTapeApp: App {
     // Static property to hold the settings window instance
     private static var settingsWindow: NSWindow?
 
+    private func openSettings() {
+        if let existingWindow = DuctTapeApp.settingsWindow, existingWindow.isVisible {
+            existingWindow.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        } else {
+            let window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 300, height: 200),
+                styleMask: [.titled, .closable],
+                backing: .buffered, defer: false)
+            window.center()
+            window.setFrameAutosaveName("SettingsWindow")
+            window.contentView = NSHostingView(rootView: SettingsView())
+            window.isReleasedWhenClosed = false // Important to keep the window instance if you plan to re-show it
+
+            DuctTapeApp.settingsWindow = window
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+
     var body: some Scene {
         MenuBarExtra("▶") {
             if !scriptManager.scripts.isEmpty {
@@ -104,29 +124,22 @@ struct DuctTapeApp: App {
             Divider()
 
             Button("Settings...") {
-                if let existingWindow = DuctTapeApp.settingsWindow, existingWindow.isVisible {
-                    existingWindow.makeKeyAndOrderFront(nil)
-                    NSApp.activate(ignoringOtherApps: true)
-                } else {
-                    let window = NSWindow(
-                        contentRect: NSRect(x: 0, y: 0, width: 300, height: 200),
-                        styleMask: [.titled, .closable],
-                        backing: .buffered, defer: false)
-                    window.center()
-                    window.setFrameAutosaveName("SettingsWindow")
-                    window.contentView = NSHostingView(rootView: SettingsView())
-                    window.isReleasedWhenClosed = false // Important to keep the window instance if you plan to re-show it
-
-                    DuctTapeApp.settingsWindow = window
-                    window.makeKeyAndOrderFront(nil)
-                    NSApp.activate(ignoringOtherApps: true)
-                }
+                openSettings()
             }
+            .keyboardShortcut(",", modifiers: .command)
 
             Divider()
 
             Button("Close") {
                 NSApplication.shared.terminate(nil)
+            }
+        }
+        .commands {
+            CommandGroup(replacing: .appSettings) {
+                Button("Settings...") {
+                    openSettings()
+                }
+                .keyboardShortcut(",", modifiers: .command)
             }
         }
     }
