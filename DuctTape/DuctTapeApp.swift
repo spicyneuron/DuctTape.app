@@ -8,6 +8,16 @@ import Foundation
 import AppKit
 
 class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Apply saved dock icon preference after a brief delay to avoid timing issues
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            let hideDockIcon = UserDefaults.standard.bool(forKey: "hideDockIconUserChoice")
+            if hideDockIcon {
+                NSApplication.shared.setActivationPolicy(.accessory)
+            }
+        }
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         // Slight delay to ensure all scripts are terminated
         ScriptManager.shared.terminateAll()

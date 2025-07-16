@@ -63,11 +63,12 @@ struct SettingsView: View {
     }
 
     private func toggleDockIcon(hidden: Bool) {
-        let policy: NSApplication.ActivationPolicy = hidden ? .accessory : .regular
-        let success = NSApplication.shared.setActivationPolicy(policy)
-
+        let targetPolicy: NSApplication.ActivationPolicy = hidden ? .accessory : .regular
+        let success = NSApplication.shared.setActivationPolicy(targetPolicy)
         if !success {
-            alertMessage = "Failed to \(hidden ? "hide" : "show") dock icon"
+            // Reset the toggle and show error
+            hideDockIcon = !hidden
+            alertMessage = "Failed to \(hidden ? "hide" : "show") dock icon. Please restart the app for this setting to take effect."
             showingAlert = true
         }
     }
