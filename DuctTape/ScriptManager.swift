@@ -33,7 +33,11 @@ class ScriptManager: ObservableObject {
         if let scriptPaths = UserDefaults.standard.stringArray(forKey: "savedScripts") {
             let urls = scriptPaths.map { URL(fileURLWithPath: $0) }
             let sortedUrls = urls.sorted { $0.lastPathComponent.localizedCaseInsensitiveCompare($1.lastPathComponent) == .orderedAscending }
-            return sortedUrls.map { ScriptItem(url: $0) }
+            return sortedUrls.map {
+                var script = ScriptItem(url: $0)
+                validateScriptExists(&script)
+                return script
+            }
         }
         return []
     }
@@ -44,7 +48,8 @@ class ScriptManager: ObservableObject {
     }
 
     func addScript(url: URL) {
-        let newScript = ScriptItem(url: url)
+        var newScript = ScriptItem(url: url)
+        validateScriptExists(&newScript)
         scripts.append(newScript)
         scripts.sort { $0.url.lastPathComponent.localizedCaseInsensitiveCompare($1.url.lastPathComponent) == .orderedAscending }
         saveScripts()
@@ -61,8 +66,22 @@ class ScriptManager: ObservableObject {
         }
     }
 
+    private func validateScriptExists(_ script: inout ScriptItem) {
+        if !FileManager.default.fileExists(atPath: script.url.path) {
+            script.status = .error
+            script.outputLines = ["Error: Script file not found at \(script.url.path)"]
+        }
+    }
+
     func runScript(_ script: ScriptItem) {
         guard let index = scripts.firstIndex(where: { $0.id == script.id }) else { return }
+
+        // Check if script file exists before attempting to run
+        if !FileManager.default.fileExists(atPath: script.url.path) {
+            scripts[index].status = .error
+            scripts[index].outputLines = ["Error: Script file not found at \(script.url.path)"]
+            return
+        }
 
         let process = Process()
         let outputPipe = Pipe()
