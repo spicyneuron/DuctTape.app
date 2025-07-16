@@ -8,6 +8,16 @@ import Foundation
 import AppKit
 
 class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Apply saved dock icon preference after a brief delay to avoid timing issues
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            let hideDockIcon = UserDefaults.standard.bool(forKey: "hideDockIconUserChoice")
+            if hideDockIcon {
+                NSApplication.shared.setActivationPolicy(.accessory)
+            }
+        }
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         // Slight delay to ensure all scripts are terminated
         ScriptManager.shared.terminateAll()
@@ -23,8 +33,30 @@ struct DuctTapeApp: App {
     @StateObject private var scriptManager = ScriptManager.shared
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
+    @State private var settingsWindow: NSWindow?
+
+    private func openSettings() {
+        if let existingWindow = settingsWindow {
+            existingWindow.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let window = NSWindow(
+            contentRect: NSRect.zero,
+            styleMask: [.titled, .closable],
+            backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.setFrameAutosaveName("SettingsWindow")
+        window.contentView = NSHostingView(rootView: SettingsView())
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        settingsWindow = window
+    }
+
     var body: some Scene {
-        MenuBarExtra("▶") {
+        MenuBarExtra("DuctTape", systemImage: scriptManager.appIcon) {
             if !scriptManager.scripts.isEmpty {
                 ForEach(scriptManager.scripts) { script in
                     Menu("\(script.status.icon) \(script.url.lastPathComponent)") {
@@ -100,8 +132,23 @@ struct DuctTapeApp: App {
 
             Divider()
 
+            Button("Settings...") {
+                openSettings()
+            }
+            .keyboardShortcut(",", modifiers: .command)
+
+            Divider()
+
             Button("Close") {
                 NSApplication.shared.terminate(nil)
+            }
+        }
+        .commands {
+            CommandGroup(replacing: .appSettings) {
+                Button("Settings...") {
+                    openSettings()
+                }
+                .keyboardShortcut(",", modifiers: .command)
             }
         }
     }

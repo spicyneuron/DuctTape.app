@@ -11,6 +11,24 @@ class ScriptManager: ObservableObject {
         scripts = loadScripts()
     }
 
+    // Computed property to get the appropriate SF symbol
+    var appIcon: String {
+        let hasErrors = scripts.contains(where: { $0.status == .error })
+        let activeScriptCount = scripts.filter { $0.status == .running }.count
+
+        if hasErrors && activeScriptCount > 0 {
+            return "exclamationmark.circle.fill"
+        } else if hasErrors {
+            return "exclamationmark.circle"
+        } else if activeScriptCount == 0 {
+            return "pause.circle"
+        } else if activeScriptCount <= 50 {
+            return "\(activeScriptCount).circle.fill"
+        } else {
+            return "asterisk.circle.fill"
+        }
+    }
+
     private func loadScripts() -> [ScriptItem] {
         if let scriptPaths = UserDefaults.standard.stringArray(forKey: "savedScripts") {
             let urls = scriptPaths.map { URL(fileURLWithPath: $0) }
@@ -113,7 +131,7 @@ class ScriptManager: ObservableObject {
     func restartScript(_ script: ScriptItem) {
         // First stop the script if it's running
         stopScript(script)
-        
+
         // Wait a brief moment for the process to fully terminate
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             self.runScript(script)
