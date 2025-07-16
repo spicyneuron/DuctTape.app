@@ -102,7 +102,7 @@ struct DuctTapeApp: App {
 
             Button("Settings...") {
                 let window = NSWindow(
-                    contentRect: NSRect(x: 0, y: 0, width: 300, height: 150), // Initial size, will be adapted by SettingsView
+                    contentRect: NSRect(x: 0, y: 0, width: 300, height: 200), // Initial size, will be adapted by SettingsView
                     styleMask: [.titled, .closable, .miniaturizable, .resizable],
                     backing: .buffered, defer: false)
                 window.center()
