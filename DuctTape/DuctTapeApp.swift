@@ -65,6 +65,9 @@ struct DuctTapeApp: App {
                             Button("Restart") { scriptManager.restartScript(script) }
                         } else {
                             Button("Run") { scriptManager.runScript(script) }
+                            if script.status == .error {
+                                Button("Reset") { scriptManager.resetScript(script) }
+                            }
                         }
 
                         Section("Path") {

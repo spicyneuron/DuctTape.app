@@ -157,6 +157,15 @@ class ScriptManager: ObservableObject {
         }
     }
 
+    func resetScript(_ script: ScriptItem) {
+        guard let index = scripts.firstIndex(where: { $0.id == script.id }) else { return }
+
+        // Reset script status to idle and clear output
+        scripts[index].status = .idle
+        scripts[index].outputLines = []
+        scripts[index].process = nil
+    }
+
     func terminateAll() {
         for i in 0..<scripts.count {
             if scripts[i].process != nil && scripts[i].process!.isRunning {
