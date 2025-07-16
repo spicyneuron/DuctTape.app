@@ -23,26 +23,26 @@ struct DuctTapeApp: App {
     @StateObject private var scriptManager = ScriptManager.shared
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
-    // Static property to hold the settings window instance
-    private static var settingsWindow: NSWindow?
+    @State private var settingsWindow: NSWindow?
 
     private func openSettings() {
-        if let existingWindow = DuctTapeApp.settingsWindow, existingWindow.isVisible {
+        if let existingWindow = settingsWindow {
             existingWindow.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
-        } else {
-            let window = NSWindow(
-                contentRect: NSRect.zero,
-                styleMask: [.titled, .closable],
-                backing: .buffered, defer: false)
-            window.setFrameAutosaveName("SettingsWindow")
-            window.contentView = NSHostingView(rootView: SettingsView())
-            window.center()
-
-            DuctTapeApp.settingsWindow = window
-            window.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
+            return
         }
+
+        let window = NSWindow(
+            contentRect: NSRect.zero,
+            styleMask: [.titled, .closable],
+            backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.setFrameAutosaveName("SettingsWindow")
+        window.contentView = NSHostingView(rootView: SettingsView())
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        settingsWindow = window
     }
 
     var body: some Scene {
