@@ -1,3 +1,5 @@
+<img src="DuctTape/Assets.xcassets/AppIcon.appiconset/icon_256x256.png" alt="DuctTape App Icon" width="128" height="128">
+
 # DuctTape
 
 A minimal macOS menu bar app for managing and running scripts without cluttering your terminal.
