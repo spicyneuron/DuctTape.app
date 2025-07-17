@@ -7,3 +7,5 @@ A minimal macOS menu bar app for managing and running scripts without cluttering
 - **Monitor status** with visual indicators (⚪️ idle, 🟢 running, 🔴 error)
 - **View output** directly in the menu
 - **Track processes** with PID display
+
+(Also, a playground for testing various AI coding workflows.)
