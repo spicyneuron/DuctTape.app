@@ -138,22 +138,32 @@ class ScriptManager: ObservableObject {
         }
     }
 
-    func stopScript(_ script: ScriptItem) {
+    func stopScript(_ script: ScriptItem, completion: (() -> Void)? = nil) {
         guard let index = scripts.firstIndex(where: { $0.id == script.id }),
               let process = scripts[index].process,
-              process.isRunning else { return }
+              process.isRunning else {
+            completion?()
+            return
+        }
+
+        let originalHandler = process.terminationHandler
+        process.terminationHandler = { proc in
+            originalHandler?(proc)
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                completion?()
+            }
+        }
 
         process.terminate()
         scripts[index].outputLines.append("Process terminated by user")
     }
 
     func restartScript(_ script: ScriptItem) {
-        // First stop the script if it's running
-        stopScript(script)
-
-        // Wait a brief moment for the process to fully terminate
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.runScript(script)
+        stopScript(script) { [weak self] in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                self?.runScript(script)
+            }
         }
     }
 
