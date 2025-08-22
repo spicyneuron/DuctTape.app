@@ -3,9 +3,12 @@ import SwiftUI
 
 class ScriptManager: ObservableObject {
     @Published var scripts: [ScriptItem] = []
+    @Published var hasNewOutput: Bool = false
 
     // Singleton instance
     static let shared = ScriptManager()
+
+    private var notificationTimer: Timer?
 
     init() {
         scripts = loadScripts()
@@ -16,17 +19,18 @@ class ScriptManager: ObservableObject {
         let hasErrors = scripts.contains(where: { $0.status == .error })
         let activeScriptCount = scripts.filter { $0.status == .running }.count
 
-        if hasErrors && activeScriptCount > 0 {
-            return "exclamationmark.circle.fill"
-        } else if hasErrors {
-            return "exclamationmark.circle"
+        let baseIcon: String
+        if hasErrors {
+            baseIcon = hasNewOutput ? "exclamationmark.circle.fill" : "exclamationmark.circle"
         } else if activeScriptCount == 0 {
-            return "pause.circle"
+            baseIcon = "pause.circle"
         } else if activeScriptCount <= 50 {
-            return "\(activeScriptCount).circle.fill"
+            baseIcon = hasNewOutput ? "\(activeScriptCount).circle.fill" : "\(activeScriptCount).circle"
         } else {
-            return "asterisk.circle.fill"
+            baseIcon = hasNewOutput ? "asterisk.circle.fill" : "asterisk.circle"
         }
+
+        return baseIcon
     }
 
     private func loadScripts() -> [ScriptItem] {
@@ -136,6 +140,23 @@ class ScriptManager: ObservableObject {
         if scripts[index].outputLines.count > maxOutputLines {
             scripts[index].outputLines = Array(scripts[index].outputLines.suffix(maxOutputLines))
         }
+
+        // Trigger new output notification
+        triggerNewOutputNotification()
+    }
+
+    private func triggerNewOutputNotification() {
+        hasNewOutput = true
+
+        // Cancel existing timer if any
+        notificationTimer?.invalidate()
+
+        // Set timer to reset notification after 5 seconds
+        notificationTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: false) { [weak self] _ in
+            DispatchQueue.main.async {
+                self?.hasNewOutput = false
+            }
+        }
     }
 
     func stopScript(_ script: ScriptItem, completion: (() -> Void)? = nil) {
@@ -182,5 +203,9 @@ class ScriptManager: ObservableObject {
                 scripts[i].process?.terminate()
             }
         }
+
+        // Clean up notification timer
+        notificationTimer?.invalidate()
+        notificationTimer = nil
     }
 }

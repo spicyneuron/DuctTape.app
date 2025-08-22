@@ -59,7 +59,7 @@ struct DuctTapeApp: App {
     }
 
     var body: some Scene {
-        MenuBarExtra("DuctTape", systemImage: scriptManager.appIcon) {
+        MenuBarExtra {
             if !scriptManager.scripts.isEmpty {
                 ForEach(scriptManager.scripts) { script in
                     Menu("\(script.status.icon) \(script.url.lastPathComponent)") {
@@ -137,6 +137,8 @@ struct DuctTapeApp: App {
             Button("Close") {
                 NSApplication.shared.terminate(nil)
             }
+        } label: {
+            Image(systemName: scriptManager.appIcon)
         }
         .commands {
             CommandGroup(replacing: .appSettings) {
