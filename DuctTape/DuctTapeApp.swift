@@ -36,10 +36,9 @@ struct DuctTapeApp: App {
     @StateObject private var outputWindowManager = OutputWindowManager.shared
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
-    @State private var settingsWindow: NSWindow?
-
     private func openSettings() {
-        if let existingWindow = settingsWindow {
+        // Check if settings window already exists using the autosave name
+        if let existingWindow = NSApp.windows.first(where: { $0.frameAutosaveName == "SettingsWindow" }) {
             existingWindow.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
             return
@@ -55,7 +54,6 @@ struct DuctTapeApp: App {
         window.center()
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
-        settingsWindow = window
     }
 
     var body: some Scene {

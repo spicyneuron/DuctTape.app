@@ -163,7 +163,6 @@ class OutputWindowManager: ObservableObject {
     static let shared = OutputWindowManager()
 
     private var windows: [UUID: NSWindow] = [:]
-    private var delegates: [UUID: WindowDelegate] = [:]
 
     func openOutputWindow(for script: ScriptItem) {
         // If window already exists, bring it to front
@@ -188,12 +187,9 @@ class OutputWindowManager: ObservableObject {
         window.contentView = NSHostingView(rootView: contentView)
 
         // Handle window closing
-        let delegate = WindowDelegate { [weak self] in
+        NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: window, queue: .main) { [weak self] _ in
             self?.windows.removeValue(forKey: script.id)
-            self?.delegates.removeValue(forKey: script.id)
         }
-        window.delegate = delegate
-        delegates[script.id] = delegate
 
         window.center()
         window.makeKeyAndOrderFront(nil)
@@ -205,7 +201,6 @@ class OutputWindowManager: ObservableObject {
     func closeWindow(for scriptId: UUID) {
         windows[scriptId]?.close()
         windows.removeValue(forKey: scriptId)
-        delegates.removeValue(forKey: scriptId)
     }
 
     func closeAllWindows() {
@@ -213,19 +208,5 @@ class OutputWindowManager: ObservableObject {
             window.close()
         }
         windows.removeAll()
-        delegates.removeAll()
-    }
-}
-
-// Helper class to handle window delegate callbacks
-private class WindowDelegate: NSObject, NSWindowDelegate {
-    let onClose: () -> Void
-
-    init(onClose: @escaping () -> Void) {
-        self.onClose = onClose
-    }
-
-    func windowWillClose(_ notification: Notification) {
-        onClose()
     }
 }
