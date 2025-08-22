@@ -1,7 +1,7 @@
 import Foundation
 
 // Config
-let maxOutputLines = 20
+let maxOutputLines = 10000
 let maxOutputLineLength = 80
 let maxMenuWidth: CGFloat = 350
 

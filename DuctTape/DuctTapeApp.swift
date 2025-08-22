@@ -19,8 +19,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        // Slight delay to ensure all scripts are terminated
         ScriptManager.shared.terminateAll()
+        OutputWindowManager.shared.closeAllWindows()
+
+        // Slight delay to ensure all scripts are terminated
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             NSApp.reply(toApplicationShouldTerminate: true)
         }
@@ -31,6 +33,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 @main
 struct DuctTapeApp: App {
     @StateObject private var scriptManager = ScriptManager.shared
+    @StateObject private var outputWindowManager = OutputWindowManager.shared
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     @State private var settingsWindow: NSWindow?
@@ -79,28 +82,17 @@ struct DuctTapeApp: App {
                             .truncationMode(.middle)
                         }
 
-                        Section("PID") {
+                        Section("Status") {
                             if let process = script.process, process.isRunning {
-                                Text(String(process.processIdentifier))
+                                Text("PID: \(process.processIdentifier)")
                                     .font(.system(.body, design: .monospaced))
                             } else {
                                 Text("Not running")
                                     .font(.system(.body, design: .monospaced))
                             }
-                        }
 
-                        Section("Output") {
-                            if script.outputLines.isEmpty {
-                                Text("...")
-                                    .font(.system(.body, design: .monospaced))
-                            } else {
-                                let displayLines = script.outputLines.suffix(maxOutputLines)
-                                let truncatedLines = displayLines.map { line in
-                                    line.count > maxOutputLineLength ? String(line.prefix(maxOutputLineLength)) + "..." : line
-                                }
-                                Text(truncatedLines.joined(separator: "\n"))
-                                    .font(.system(.body, design: .monospaced))
-                                    .fixedSize(horizontal: false, vertical: true)
+                            Button("Show Output Window") {
+                                outputWindowManager.openOutputWindow(for: script)
                             }
                         }
                     }
