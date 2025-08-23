@@ -8,6 +8,14 @@ struct SettingsView: View {
     @State private var showingAlert = false
     @State private var alertMessage = ""
 
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
+    }
+
+    private var buildNumber: String {
+        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             VStack(alignment: .leading, spacing: 4) {
@@ -39,8 +47,13 @@ struct SettingsView: View {
             }
 
             Spacer()
+
+            Text("Version \(appVersion) (\(buildNumber))")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .padding(.top, 8)
         }
-        .frame(minWidth: 300, minHeight: 220, alignment: .topLeading)
+        .frame(minWidth: 300, minHeight: 200, alignment: .topLeading)
         .padding(24)
         .alert("Settings Error", isPresented: $showingAlert) {
             Button("OK") { }
