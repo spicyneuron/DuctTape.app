@@ -47,9 +47,12 @@ if [ ! -d "$APP_PATH" ]; then
     exit 1
 fi
 
+# Convert to absolute path for defaults read command
+APP_PATH=$(realpath "$APP_PATH")
+
 # Get app version from the app bundle
-APP_VERSION=$(defaults read "$APP_PATH/Contents/Info" CFBundleShortVersionString 2>/dev/null || echo "unknown")
-BUILD_NUMBER=$(defaults read "$APP_PATH/Contents/Info" CFBundleVersion 2>/dev/null || echo "unknown")
+APP_VERSION=$(defaults read "$APP_PATH/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null || echo "unknown")
+BUILD_NUMBER=$(defaults read "$APP_PATH/Contents/Info.plist" CFBundleVersion 2>/dev/null || echo "unknown")
 
 print_info "Creating DMG for $APP_NAME version $APP_VERSION (build $BUILD_NUMBER)"
 
