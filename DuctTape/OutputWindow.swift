@@ -90,18 +90,18 @@ struct ScriptOutputWindow: View {
                                 Text("No output yet...")
                                     .foregroundColor(.secondary)
                                     .font(.system(.body, design: .monospaced))
-                                    .padding()
+                                    .padding(.vertical, 1)
                             } else {
                                 ForEach(0..<script.outputLines.count, id: \.self) { index in
                                     Text(script.outputLines[index])
                                         .font(.system(.body, design: .monospaced))
                                         .textSelection(.enabled)
                                         .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(.horizontal, 8)
                                         .padding(.vertical, 1)
                                 }
                             }
                         }
+                        .padding()
                     }
                     .background(Color(.textBackgroundColor))
                     .cornerRadius(6)
