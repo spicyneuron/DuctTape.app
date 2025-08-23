@@ -16,32 +16,28 @@ class ScriptManager: ObservableObject {
 
     // Computed property to get the appropriate SF symbol
     var appIcon: String {
-        let hasErrors = scripts.contains(where: { $0.status == .error })
-        let activeScriptCount = scripts.filter { $0.status == .running }.count
+        let hasErrors = scripts.contains { $0.status == .error }
+        let runningCount = scripts.count { $0.status == .running }
+        let suffix = hasNewOutput ? ".fill" : ""
 
-        let baseIcon: String
-        if hasErrors {
-            baseIcon = hasNewOutput ? "exclamationmark.circle.fill" : "exclamationmark.circle"
-        } else if activeScriptCount == 0 {
-            baseIcon = "pause.circle"
-        } else if activeScriptCount <= 50 {
-            baseIcon = hasNewOutput ? "\(activeScriptCount).circle.fill" : "\(activeScriptCount).circle"
-        } else {
-            baseIcon = hasNewOutput ? "asterisk.circle.fill" : "asterisk.circle"
+        switch (hasErrors, runningCount) {
+        case (true, _):
+            return "exclamationmark.circle\(suffix)"
+        case (false, 0):
+            return "pause.circle"
+        case (false, 1...50):
+            return "\(runningCount).circle\(suffix)"
+        default:
+            return "asterisk.circle\(suffix)"
         }
-
-        return baseIcon
     }
 
     private func loadScripts() -> [ScriptItem] {
         if let scriptPaths = UserDefaults.standard.stringArray(forKey: "savedScripts") {
-            let urls = scriptPaths.map { URL(fileURLWithPath: $0) }
-            let sortedUrls = urls.sorted { $0.lastPathComponent.localizedCaseInsensitiveCompare($1.lastPathComponent) == .orderedAscending }
-            return sortedUrls.map {
-                var script = ScriptItem(url: $0)
-                validateScriptExists(&script)
-                return script
-            }
+            return scriptPaths
+                .map(URL.init(fileURLWithPath:))
+                .sorted { $0.lastPathComponent.localizedCaseInsensitiveCompare($1.lastPathComponent) == .orderedAscending }
+                .map(ScriptItem.init)
         }
         return []
     }
@@ -52,8 +48,7 @@ class ScriptManager: ObservableObject {
     }
 
     func addScript(url: URL) {
-        var newScript = ScriptItem(url: url)
-        validateScriptExists(&newScript)
+        let newScript = ScriptItem(url: url)
         scripts.append(newScript)
         scripts.sort { $0.url.lastPathComponent.localizedCaseInsensitiveCompare($1.url.lastPathComponent) == .orderedAscending }
         saveScripts()
@@ -70,22 +65,9 @@ class ScriptManager: ObservableObject {
         }
     }
 
-    private func validateScriptExists(_ script: inout ScriptItem) {
-        if !FileManager.default.fileExists(atPath: script.url.path) {
-            script.status = .error
-            script.outputLines = ["Error: Script file not found at \(script.url.path)"]
-        }
-    }
-
     func runScript(_ script: ScriptItem) {
-        guard let index = scripts.firstIndex(where: { $0.id == script.id }) else { return }
-
-        // Check if script file exists before attempting to run
-        if !FileManager.default.fileExists(atPath: script.url.path) {
-            scripts[index].status = .error
-            scripts[index].outputLines = ["Error: Script file not found at \(script.url.path)"]
-            return
-        }
+        guard let index = scripts.firstIndex(where: { $0.id == script.id }),
+              script.fileExists else { return }
 
         let process = Process()
         let outputPipe = Pipe()
