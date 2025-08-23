@@ -6,8 +6,8 @@ A minimal macOS menu bar app for managing and running scripts without cluttering
 
 - **Add scripts** via file picker
 - **Run/stop/restart** scripts with a click
+- **Run scripts automatically** when app is launched
 - **Monitor status** with visual indicators (⚪️ idle, 🟢 running, 🔴 error)
-- **View output** directly in the menu
-- **Track processes** with PID display
+- **Monitor output** directly in app
 
 (Also, a playground for testing various AI coding workflows.)

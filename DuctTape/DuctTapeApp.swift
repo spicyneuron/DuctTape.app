@@ -60,7 +60,7 @@ struct DuctTapeApp: App {
         MenuBarExtra {
             if !scriptManager.scripts.isEmpty {
                 ForEach(scriptManager.scripts) { script in
-                    Menu("\(script.status.icon) \(script.url.lastPathComponent)",
+                    Menu("\(script.status.icon)\(script.autoStart ? "⚡️" : "") \(script.url.lastPathComponent)",
                          content: {
                         if script.status == .running {
                             Button("Stop") { scriptManager.stopScript(script) }
@@ -89,12 +89,18 @@ struct DuctTapeApp: App {
                                     pasteboard.clearContents()
                                     pasteboard.setString(String(process.processIdentifier), forType: .string)
                                 }
-                                .help("Copy PID to clipboard")
+                                .help("Copy PID to Clipboard")
                             } else {
                                 Text("Not running")
                             }
 
-                            Button("Show Output Window") {
+                            Button(script.autoStart ? "Disable Auto-run" : "Enable Auto-run") {
+                                scriptManager.toggleAutoStart(script)
+                            }
+
+                            Divider()
+
+                            Button("Show Script Output...") {
                                 outputWindowManager.openOutputWindow(for: script)
                             }
                         }
@@ -107,7 +113,7 @@ struct DuctTapeApp: App {
                 Divider()
             }
 
-            Button("Add script") {
+            Button("Add Script") {
                 let openPanel = NSOpenPanel()
                 openPanel.canChooseFiles = true
                 openPanel.canChooseDirectories = false
@@ -121,7 +127,7 @@ struct DuctTapeApp: App {
             }
 
             if !scriptManager.scripts.isEmpty {
-                Menu("Remove script") {
+                Menu("Remove Script") {
                     ForEach(scriptManager.scripts) { script in
                         Button(script.url.lastPathComponent) {
                             scriptManager.removeScript(script: script)

@@ -21,6 +21,13 @@ class ScriptManager: ObservableObject {
 
     init() {
         scripts = loadScripts()
+
+        // Auto-start scripts that are flagged for auto-start
+        DispatchQueue.main.asyncAfter(deadline: .now() + Configuration.dockIconDelay) {
+            for script in self.scripts where script.autoStart && script.fileExists {
+                self.runScript(script)
+            }
+        }
     }
 
     // Computed property to get the appropriate SF symbol
@@ -42,18 +49,46 @@ class ScriptManager: ObservableObject {
     }
 
     private func loadScripts() -> [ScriptItem] {
+        // Try to load new format with autoStart data
+        if let scriptsData = UserDefaults.standard.array(forKey: "savedScriptsData") as? [[String: Any]] {
+            return scriptsData
+                .compactMap { data -> ScriptItem? in
+                    guard let path = data["path"] as? String else { return nil }
+                    let autoStart = data["autoStart"] as? Bool ?? false
+                    return ScriptItem(url: URL(fileURLWithPath: path), autoStart: autoStart)
+                }
+                .sorted { $0.url.lastPathComponent.localizedCaseInsensitiveCompare($1.url.lastPathComponent) == .orderedAscending }
+        }
+
+        // Fallback to old format for migration
         if let scriptPaths = UserDefaults.standard.stringArray(forKey: "savedScripts") {
-            return scriptPaths
+            let migratedScripts = scriptPaths
                 .map(URL.init(fileURLWithPath:))
                 .sorted { $0.lastPathComponent.localizedCaseInsensitiveCompare($1.lastPathComponent) == .orderedAscending }
-                .map(ScriptItem.init)
+                .map { ScriptItem(url: $0, autoStart: false) }
+
+            // Save in new format and remove old
+            saveScripts(migratedScripts)
+            UserDefaults.standard.removeObject(forKey: "savedScripts")
+
+            return migratedScripts
         }
+
         return []
     }
 
     private func saveScripts() {
-        let scriptPaths = scripts.map { $0.url.path }
-        UserDefaults.standard.set(scriptPaths, forKey: "savedScripts")
+        saveScripts(scripts)
+    }
+
+    private func saveScripts(_ scriptsToSave: [ScriptItem]) {
+        let scriptsData = scriptsToSave.map { script in
+            [
+                "path": script.url.path,
+                "autoStart": script.autoStart
+            ] as [String: Any]
+        }
+        UserDefaults.standard.set(scriptsData, forKey: "savedScriptsData")
     }
 
     func addScript(url: URL) {
@@ -199,6 +234,13 @@ class ScriptManager: ObservableObject {
         scripts[index].status = .idle
         clearOutput(for: index)
         scripts[index].process = nil
+    }
+
+    func toggleAutoStart(_ script: ScriptItem) {
+        guard let index = scripts.firstIndex(where: { $0.id == script.id }) else { return }
+
+        scripts[index].autoStart.toggle()
+        saveScripts()
     }
 
     func terminateAll() {

@@ -20,9 +20,11 @@ struct ScriptItem: Identifiable {
     var status: ScriptStatus = .idle
     var process: Process? = nil
     var outputLines: [String] = []
+    var autoStart: Bool = false
 
-    init(url: URL) {
+    init(url: URL, autoStart: Bool = false) {
         self.url = url
+        self.autoStart = autoStart
         if !FileManager.default.fileExists(atPath: url.path) {
             self.status = .error
             self.outputLines = ["Error: Script file not found at \(url.path)"]
