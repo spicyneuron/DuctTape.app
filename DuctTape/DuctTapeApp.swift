@@ -10,7 +10,7 @@ import AppKit
 class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Apply saved dock icon preference after a brief delay to avoid timing issues
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + Configuration.dockIconDelay) {
             let hideDockIcon = UserDefaults.standard.bool(forKey: "hideDockIconUserChoice")
             if hideDockIcon {
                 NSApplication.shared.setActivationPolicy(.accessory)
@@ -23,7 +23,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         OutputWindowManager.shared.closeAllWindows()
 
         // Slight delay to ensure all scripts are terminated
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + Configuration.appTerminationDelay) {
             NSApp.reply(toApplicationShouldTerminate: true)
         }
         return .terminateLater
@@ -94,7 +94,7 @@ struct DuctTapeApp: App {
                             }
                         }
                     }
-                    .frame(maxWidth: maxMenuWidth, alignment: .leading)
+                    .frame(maxWidth: Configuration.maxMenuWidth, alignment: .leading)
                 }
 
                 Divider()

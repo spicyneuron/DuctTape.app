@@ -119,8 +119,8 @@ class ScriptManager: ObservableObject {
 
     func appendOutput(_ lines: [String], to index: Int) {
         scripts[index].outputLines.append(contentsOf: lines)
-        if scripts[index].outputLines.count > maxOutputLines {
-            scripts[index].outputLines = Array(scripts[index].outputLines.suffix(maxOutputLines))
+        if scripts[index].outputLines.count > Configuration.maxOutputLines {
+            scripts[index].outputLines = Array(scripts[index].outputLines.suffix(Configuration.maxOutputLines))
         }
 
         // Trigger new output notification
@@ -134,7 +134,7 @@ class ScriptManager: ObservableObject {
         notificationTimer?.invalidate()
 
         // Set timer to reset notification after 5 seconds
-        notificationTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: false) { [weak self] _ in
+        notificationTimer = Timer.scheduledTimer(withTimeInterval: Configuration.outputActivityDuration, repeats: false) { [weak self] _ in
             DispatchQueue.main.async {
                 self?.hasNewOutput = false
             }
@@ -153,7 +153,7 @@ class ScriptManager: ObservableObject {
         process.terminationHandler = { proc in
             originalHandler?(proc)
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Configuration.scriptTerminationDelay) {
                 completion?()
             }
         }
@@ -164,7 +164,7 @@ class ScriptManager: ObservableObject {
 
     func restartScript(_ script: ScriptItem) {
         stopScript(script) { [weak self] in
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Configuration.scriptRestartDelay) {
                 self?.runScript(script)
             }
         }

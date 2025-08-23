@@ -1,10 +1,5 @@
 import Foundation
 
-// Config
-let maxOutputLines = 10000
-let maxOutputLineLength = 80
-let maxMenuWidth: CGFloat = 350
-
 enum ScriptStatus {
     case idle
     case running
