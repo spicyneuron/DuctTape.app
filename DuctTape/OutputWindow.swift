@@ -74,18 +74,18 @@ struct ScriptOutputWindow: View {
                             }
                         }
 
-                        Spacer()
-
-                        Toggle("Auto-run", isOn: Binding(
-                            get: { script.autoStart },
-                            set: { _ in scriptManager.toggleAutoStart(script) }
-                        ))
-                        .toggleStyle(SwitchToggleStyle())
-
                         Button("Clear Output") {
                             clearOutput()
                         }
                         .disabled(script.outputLines.isEmpty)
+
+                        Spacer()
+
+                        Toggle("Run on App Launch", isOn: Binding(
+                            get: { script.autoStart },
+                            set: { _ in scriptManager.toggleAutoStart(script) }
+                        ))
+                        .toggleStyle(SwitchToggleStyle())
                     }
                     .padding(.horizontal)
 

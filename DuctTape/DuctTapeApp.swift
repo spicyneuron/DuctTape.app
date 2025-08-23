@@ -94,7 +94,7 @@ struct DuctTapeApp: App {
                                 Text("Not running")
                             }
 
-                            Button(script.autoStart ? "Disable Auto-run" : "Enable Auto-run") {
+                            Button("Run on App Launch: \(script.autoStart ? "Enabled" : "Disabled")") {
                                 scriptManager.toggleAutoStart(script)
                             }
 
