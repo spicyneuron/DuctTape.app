@@ -60,7 +60,8 @@ struct DuctTapeApp: App {
         MenuBarExtra {
             if !scriptManager.scripts.isEmpty {
                 ForEach(scriptManager.scripts) { script in
-                    Menu("\(script.status.icon) \(script.url.lastPathComponent)") {
+                    Menu("\(script.status.icon) \(script.url.lastPathComponent)",
+                         content: {
                         if script.status == .running {
                             Button("Stop") { scriptManager.stopScript(script) }
                             Button("Restart") { scriptManager.restartScript(script) }
@@ -97,7 +98,9 @@ struct DuctTapeApp: App {
                                 outputWindowManager.openOutputWindow(for: script)
                             }
                         }
-                    }
+                    }, primaryAction: {
+                        outputWindowManager.openOutputWindow(for: script)
+                    })
                     .frame(maxWidth: Configuration.maxMenuWidth, alignment: .leading)
                 }
 
