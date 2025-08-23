@@ -78,15 +78,19 @@ struct DuctTapeApp: App {
                             .font(.system(.body, design: .monospaced))
                             .lineLimit(1)
                             .truncationMode(.middle)
+                            .help("Open in Finder")
                         }
 
                         Section("Status") {
                             if let process = script.process, process.isRunning {
-                                Text("PID: \(process.processIdentifier)")
-                                    .font(.system(.body, design: .monospaced))
+                                Button("PID: \(String(process.processIdentifier))") {
+                                    let pasteboard = NSPasteboard.general
+                                    pasteboard.clearContents()
+                                    pasteboard.setString(String(process.processIdentifier), forType: .string)
+                                }
+                                .help("Copy PID to clipboard")
                             } else {
                                 Text("Not running")
-                                    .font(.system(.body, design: .monospaced))
                             }
 
                             Button("Show Output Window") {
