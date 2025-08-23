@@ -4,9 +4,33 @@ import ServiceManagement
 struct SettingsView: View {
     @AppStorage("openOnLoginUserChoice") private var openOnLogin = false
     @AppStorage("hideDockIconUserChoice") private var hideDockIcon = false
+    @AppStorage("outputBufferLimit") private var outputBufferLimit = Configuration.outputBufferLimitDefault
 
     @State private var showingAlert = false
     @State private var alertMessage = ""
+
+    private var outputMode: OutputMode {
+        switch outputBufferLimit {
+        case 0: return .disabled
+        case -1: return .unlimited
+        default: return .limited
+        }
+    }
+
+    private var limitValue: Int {
+        outputBufferLimit > 0 ? outputBufferLimit : Configuration.outputBufferLimitDefault
+    }
+
+    private func updateOutputSettings(mode: OutputMode, limit: Int) {
+        switch mode {
+        case .disabled:
+            outputBufferLimit = 0
+        case .unlimited:
+            outputBufferLimit = -1
+        case .limited:
+            outputBufferLimit = max(1, limit) // Ensure at least 1 line
+        }
+    }
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
@@ -44,6 +68,14 @@ struct SettingsView: View {
                     isOn: $hideDockIcon,
                     onToggle: toggleDockIcon
                 )
+
+                OutputLimitSettingRow(
+                    icon: "doc.text",
+                    title: "Script output buffer",
+                    mode: outputMode,
+                    limitValue: limitValue,
+                    onUpdate: updateOutputSettings
+                )
             }
 
             Spacer()
@@ -53,7 +85,7 @@ struct SettingsView: View {
                 .foregroundColor(.secondary)
                 .padding(.top, 8)
         }
-        .frame(minWidth: 300, minHeight: 200, alignment: .topLeading)
+        .frame(minWidth: 320, minHeight: 280, alignment: .topLeading)
         .padding(24)
         .alert("Settings Error", isPresented: $showingAlert) {
             Button("OK") { }
@@ -119,6 +151,94 @@ struct SettingRow: View {
                 }
             ))
             .labelsHidden()
+        }
+    }
+}
+
+enum OutputMode: String, CaseIterable {
+    case limited = "Limited"
+    case unlimited = "Unlimited"
+    case disabled = "Disabled"
+
+    var description: String {
+        switch self {
+        case .limited: return "Memory ain't free"
+        case .unlimited: return "You never know when you'll need it"
+        case .disabled: return "Use the force, Luke!"
+        }
+    }
+}
+
+struct OutputLimitSettingRow: View {
+    let icon: String
+    let title: String
+    let mode: OutputMode
+    let limitValue: Int
+    let onUpdate: (OutputMode, Int) -> Void
+
+    @State private var selectedMode: OutputMode
+    @State private var inputValue: Int
+
+    init(icon: String, title: String, mode: OutputMode, limitValue: Int, onUpdate: @escaping (OutputMode, Int) -> Void) {
+        self.icon = icon
+        self.title = title
+        self.mode = mode
+        self.limitValue = limitValue
+        self.onUpdate = onUpdate
+        self._selectedMode = State(initialValue: mode)
+        self._inputValue = State(initialValue: limitValue)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .foregroundColor(.secondary)
+                    .frame(width: 20)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.body)
+                    Text(selectedMode.description)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Spacer()
+
+                if selectedMode == .limited {
+                    TextField("Lines", value: $inputValue, formatter: NumberFormatter())
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .frame(width: 80)
+                        .multilineTextAlignment(.trailing)
+                        .onSubmit {
+                            onUpdate(selectedMode, inputValue)
+                        }
+                        .onChange(of: inputValue) { _, newValue in
+                            // Debounce updates for better UX
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                if inputValue == newValue {
+                                    onUpdate(selectedMode, newValue)
+                                }
+                            }
+                        }
+                }
+            }
+
+            HStack {
+                Spacer().frame(width: 32) // Align with title
+
+                Picker("", selection: $selectedMode) {
+                    ForEach(OutputMode.allCases, id: \.self) { mode in
+                        Text(mode.rawValue).tag(mode)
+                    }
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                .labelsHidden()
+                .onChange(of: selectedMode) { _, newMode in
+                    onUpdate(newMode, inputValue)
+                }
+            }
         }
     }
 }

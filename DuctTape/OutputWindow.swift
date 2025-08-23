@@ -153,7 +153,7 @@ struct ScriptOutputWindow: View {
 
     private func clearOutput() {
         if let index = scriptManager.scripts.firstIndex(where: { $0.id == scriptId }) {
-            scriptManager.scripts[index].outputLines = []
+            scriptManager.clearOutput(for: index)
         }
     }
 }

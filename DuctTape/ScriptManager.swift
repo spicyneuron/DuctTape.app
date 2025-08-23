@@ -10,6 +10,15 @@ class ScriptManager: ObservableObject {
 
     private var notificationTimer: Timer?
 
+    private var outputBufferLimit: Int {
+        let key = "outputBufferLimit"
+        if UserDefaults.standard.object(forKey: key) != nil {
+            return UserDefaults.standard.integer(forKey: key)
+        } else {
+            return Configuration.outputBufferLimitDefault
+        }
+    }
+
     init() {
         scripts = loadScripts()
     }
@@ -78,7 +87,7 @@ class ScriptManager: ObservableObject {
 
         scripts[index].process = process
         scripts[index].status = .running
-        scripts[index].outputLines = []
+        clearOutput(for: index)
 
         // Handle output
         let fileHandle = outputPipe.fileHandleForReading
@@ -118,13 +127,25 @@ class ScriptManager: ObservableObject {
     }
 
     func appendOutput(_ lines: [String], to index: Int) {
-        scripts[index].outputLines.append(contentsOf: lines)
-        if scripts[index].outputLines.count > Configuration.maxOutputLines {
-            scripts[index].outputLines = Array(scripts[index].outputLines.suffix(Configuration.maxOutputLines))
+        triggerNewOutputNotification()
+
+        if outputBufferLimit == 0 {
+            return
         }
 
-        // Trigger new output notification
-        triggerNewOutputNotification()
+        scripts[index].outputLines.append(contentsOf: lines)
+        applyBufferLimit(to: index)
+    }
+
+    func clearOutput(for index: Int) {
+        scripts[index].outputLines = []
+    }
+
+    private func applyBufferLimit(to index: Int) {
+        let bufferLimit = outputBufferLimit
+        if bufferLimit > 0 && scripts[index].outputLines.count > bufferLimit {
+            scripts[index].outputLines = Array(scripts[index].outputLines.suffix(bufferLimit))
+        }
     }
 
     private func triggerNewOutputNotification() {
@@ -159,7 +180,8 @@ class ScriptManager: ObservableObject {
         }
 
         process.terminate()
-        scripts[index].outputLines.append("Process terminated by user")
+
+        appendOutput(["Process terminated by user"], to: index)
     }
 
     func restartScript(_ script: ScriptItem) {
@@ -175,7 +197,7 @@ class ScriptManager: ObservableObject {
 
         // Reset script status to idle and clear output
         scripts[index].status = .idle
-        scripts[index].outputLines = []
+        clearOutput(for: index)
         scripts[index].process = nil
     }
 
