@@ -9,6 +9,7 @@ import AppKit
 struct ScriptOutputWindow: View {
     let scriptId: UUID
     @ObservedObject var scriptManager: ScriptManager
+    @State private var showCopiedMessage = false
 
     private var script: ScriptItem? {
         scriptManager.scripts.first { $0.id == scriptId }
@@ -30,20 +31,58 @@ struct ScriptOutputWindow: View {
                             Spacer()
 
                             // Status indicator
-                            Text(statusText(for: script))
-                                .font(.caption)
-                                .foregroundColor(statusColor(for: script))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(statusColor(for: script).opacity(0.1))
-                                .cornerRadius(4)
+                            Button(action: {
+                                if let process = script.process {
+                                    copyToClipboard(text: "\(process.processIdentifier)")
+                                    withAnimation(.easeInOut(duration: 0.15)) {
+                                        showCopiedMessage = true
+                                    }
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                                        withAnimation(.easeInOut(duration: 0.15)) {
+                                            showCopiedMessage = false
+                                        }
+                                    }
+                                }
+                            }) {
+                                Text(showCopiedMessage ? "Copied" : statusText(for: script))
+                                    .font(.caption)
+                                    .foregroundColor(statusColor(for: script))
+                                    .frame(minWidth: 120)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(statusColor(for: script).opacity(0.1))
+                                    .cornerRadius(4)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .focusable(false)
+                            .disabled(!(script.status == .running && script.process != nil))
+                            .onHover { isHovering in
+                                if isHovering && script.status == .running && script.process != nil {
+                                    NSCursor.pointingHand.set()
+                                } else {
+                                    NSCursor.arrow.set()
+                                }
+                            }
                         }
 
-                        Text(script.url.path)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
+                        Button(action: {
+                            NSWorkspace.shared.selectFile(script.url.path, inFileViewerRootedAtPath: "")
+                        }) {
+                            Text(script.url.path)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .focusable(false)
+                        .onHover { isHovering in
+                            if isHovering {
+                                NSCursor.pointingHand.set()
+                            } else {
+                                NSCursor.arrow.set()
+                            }
+                        }
                     }
                     .padding(.horizontal)
                     .padding(.top)
@@ -129,6 +168,12 @@ struct ScriptOutputWindow: View {
         }
         .frame(minWidth: 600, minHeight: 400)
         .background(Color(.windowBackgroundColor))
+    }
+
+    private func copyToClipboard(text: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
     }
 
     private func statusText(for script: ScriptItem) -> String {
