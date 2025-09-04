@@ -132,20 +132,17 @@ struct ScriptOutputWindow: View {
 
                     // Output area
                     ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 2) {
+                        VStack(alignment: .leading) {
                             if script.outputLines.isEmpty {
                                 Text("No output yet...")
                                     .foregroundColor(.secondary)
                                     .font(.system(.body, design: .monospaced))
-                                    .padding(.vertical, 1)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                             } else {
-                                ForEach(0..<script.outputLines.count, id: \.self) { index in
-                                    Text(script.outputLines[index])
-                                        .font(.system(.body, design: .monospaced))
-                                        .textSelection(.enabled)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(.vertical, 1)
-                                }
+                                Text(script.outputLines.joined(separator: "\n"))
+                                    .font(.system(.body, design: .monospaced))
+                                    .textSelection(.enabled)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                             }
                         }
                         .padding()
