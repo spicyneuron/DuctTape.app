@@ -6,10 +6,12 @@
 import SwiftUI
 import AppKit
 
+
 struct ScriptOutputWindow: View {
     let scriptId: UUID
     @ObservedObject var scriptManager: ScriptManager
     @State private var showCopiedMessage = false
+    @State private var scrollPosition = ScrollPosition()
 
     private var script: ScriptItem? {
         scriptManager.scripts.first { $0.id == scriptId }
@@ -148,6 +150,8 @@ struct ScriptOutputWindow: View {
                         }
                         .padding()
                     }
+                    .scrollPosition($scrollPosition, anchor: .bottom)
+                    .defaultScrollAnchor(.bottom)
                     .background(Color(.textBackgroundColor))
                     .cornerRadius(6)
                     .padding(.horizontal)
