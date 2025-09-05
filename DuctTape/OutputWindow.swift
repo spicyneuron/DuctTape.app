@@ -12,6 +12,10 @@ struct ScriptOutputWindow: View {
     @ObservedObject var scriptManager: ScriptManager
     @State private var showCopiedMessage = false
     @State private var scrollPosition = ScrollPosition()
+    @State private var shouldUpdateUI: Bool = false
+    @State private var debounceTimer: Timer?
+    
+    private let debounceInterval: TimeInterval = 0.1
 
     private var script: ScriptItem? {
         scriptManager.scripts.first { $0.id == scriptId }
@@ -143,6 +147,7 @@ struct ScriptOutputWindow: View {
                                     .font(.system(.body, design: .monospaced))
                                     .textSelection(.enabled)
                                     .frame(maxWidth: .infinity, alignment: .leading)
+                                    .id(shouldUpdateUI) // Force re-render only when shouldUpdateUI changes
                             }
                         }
                         .padding()
@@ -169,6 +174,12 @@ struct ScriptOutputWindow: View {
         }
         .frame(minWidth: 600, minHeight: 400)
         .background(Color(.windowBackgroundColor))
+        .onChange(of: script?.outputLines) { _, _ in
+            scheduleUIUpdate()
+        }
+        .onAppear {
+            scheduleUIUpdate()
+        }
     }
 
     private func copyToClipboard(text: String) {
@@ -207,6 +218,22 @@ struct ScriptOutputWindow: View {
         if let index = scriptManager.scripts.firstIndex(where: { $0.id == scriptId }) {
             scriptManager.clearOutput(for: index)
         }
+        shouldUpdateUI.toggle()
+        cancelDebounceTimer()
+    }
+    
+    private func scheduleUIUpdate() {
+        debounceTimer?.invalidate()
+        debounceTimer = Timer.scheduledTimer(withTimeInterval: debounceInterval, repeats: false) { _ in
+            DispatchQueue.main.async {
+                self.shouldUpdateUI.toggle()
+            }
+        }
+    }
+    
+    private func cancelDebounceTimer() {
+        debounceTimer?.invalidate()
+        debounceTimer = nil
     }
 }
 
