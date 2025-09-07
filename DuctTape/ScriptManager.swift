@@ -132,18 +132,22 @@ class ScriptManager: ObservableObject {
     }
 
     func appendOutput(_ lines: [String], to index: Int) {
-        guard outputBufferLimit != 0, index < scripts.count else { return }
+        let bufferLimit = outputBufferLimit
+        guard bufferLimit != 0, index < scripts.count else { return }
 
         scripts[index].outputLines.append(contentsOf: lines)
-        applyBufferLimit(to: index)
+
+        // Apply buffer limit
+        if bufferLimit > 0 && scripts[index].outputLines.count > bufferLimit {
+            scripts[index].outputLines = Array(scripts[index].outputLines.suffix(bufferLimit))
+        }
 
         // Throttle UI notifications
         let scriptId = scripts[index].id
         if updateThrottlers[scriptId] == nil {
             updateThrottlers[scriptId] = ThrottleHelper(interval: Configuration.outputThrottleInterval) { [weak self] _ in
                 DispatchQueue.main.async {
-                    self?.outputUpdateTrigger = UUID() // Trigger UI refresh
-                    self?.triggerNewOutputNotification()
+                    self?.handleOutputUpdate()
                 }
             }
         }
@@ -162,14 +166,9 @@ class ScriptManager: ObservableObject {
         outputUpdateTrigger = UUID()
     }
 
-    private func applyBufferLimit(to index: Int) {
-        let bufferLimit = outputBufferLimit
-        if bufferLimit > 0 && scripts[index].outputLines.count > bufferLimit {
-            scripts[index].outputLines = Array(scripts[index].outputLines.suffix(bufferLimit))
-        }
-    }
 
-    private func triggerNewOutputNotification() {
+    private func handleOutputUpdate() {
+        outputUpdateTrigger = UUID() // Trigger UI refresh
         hasNewOutput = true
 
         // Cancel existing timer if any
