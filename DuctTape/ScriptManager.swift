@@ -1,14 +1,15 @@
 import Foundation
-import SwiftUI
 
 class ScriptManager: ObservableObject {
     @Published var scripts: [ScriptItem] = []
     @Published var hasNewOutput: Bool = false
+    @Published var outputUpdateTrigger: UUID = UUID()
 
     // Singleton instance
     static let shared = ScriptManager()
 
     private var notificationTimer: Timer?
+    private var updateThrottlers: [UUID: ThrottleHelper<Void>] = [:]
 
     private var outputBufferLimit: Int {
         let key = "outputBufferLimit"
@@ -49,32 +50,17 @@ class ScriptManager: ObservableObject {
     }
 
     private func loadScripts() -> [ScriptItem] {
-        // Try to load new format with autoStart data
-        if let scriptsData = UserDefaults.standard.array(forKey: "savedScriptsData") as? [[String: Any]] {
-            return scriptsData
-                .compactMap { data -> ScriptItem? in
-                    guard let path = data["path"] as? String else { return nil }
-                    let autoStart = data["autoStart"] as? Bool ?? false
-                    return ScriptItem(url: URL(fileURLWithPath: path), autoStart: autoStart)
-                }
-                .sorted { $0.url.lastPathComponent.localizedCaseInsensitiveCompare($1.url.lastPathComponent) == .orderedAscending }
+        guard let scriptsData = UserDefaults.standard.array(forKey: "savedScriptsData") as? [[String: Any]] else {
+            return []
         }
 
-        // Fallback to old format for migration
-        if let scriptPaths = UserDefaults.standard.stringArray(forKey: "savedScripts") {
-            let migratedScripts = scriptPaths
-                .map(URL.init(fileURLWithPath:))
-                .sorted { $0.lastPathComponent.localizedCaseInsensitiveCompare($1.lastPathComponent) == .orderedAscending }
-                .map { ScriptItem(url: $0, autoStart: false) }
-
-            // Save in new format and remove old
-            saveScripts(migratedScripts)
-            UserDefaults.standard.removeObject(forKey: "savedScripts")
-
-            return migratedScripts
-        }
-
-        return []
+        return scriptsData
+            .compactMap { data -> ScriptItem? in
+                guard let path = data["path"] as? String else { return nil }
+                let autoStart = data["autoStart"] as? Bool ?? false
+                return ScriptItem(url: URL(fileURLWithPath: path), autoStart: autoStart)
+            }
+            .sorted { $0.url.lastPathComponent.localizedCaseInsensitiveCompare($1.url.lastPathComponent) == .orderedAscending }
     }
 
     private func saveScripts() {
@@ -99,14 +85,15 @@ class ScriptManager: ObservableObject {
     }
 
     func removeScript(script: ScriptItem) {
-        if let index = scripts.firstIndex(where: { $0.id == script.id }) {
-            // Terminate process if running
-            if scripts[index].process != nil && scripts[index].process!.isRunning {
-                scripts[index].process?.terminate()
-            }
-            scripts.remove(at: index)
-            saveScripts()
-        }
+        guard let index = scripts.firstIndex(where: { $0.id == script.id }) else { return }
+
+        terminateProcessIfRunning(scripts[index].process)
+
+        updateThrottlers[script.id]?.invalidate()
+        updateThrottlers.removeValue(forKey: script.id)
+
+        scripts.remove(at: index)
+        saveScripts()
     }
 
     func runScript(_ script: ScriptItem) {
@@ -162,18 +149,34 @@ class ScriptManager: ObservableObject {
     }
 
     func appendOutput(_ lines: [String], to index: Int) {
-        triggerNewOutputNotification()
-
-        if outputBufferLimit == 0 {
-            return
-        }
+        guard outputBufferLimit != 0, index < scripts.count else { return }
 
         scripts[index].outputLines.append(contentsOf: lines)
         applyBufferLimit(to: index)
+
+        // Throttle UI notifications
+        let scriptId = scripts[index].id
+        if updateThrottlers[scriptId] == nil {
+            updateThrottlers[scriptId] = ThrottleHelper(interval: Configuration.outputThrottleInterval) { [weak self] _ in
+                DispatchQueue.main.async {
+                    self?.outputUpdateTrigger = UUID() // Trigger UI refresh
+                    self?.triggerNewOutputNotification()
+                }
+            }
+        }
+        updateThrottlers[scriptId]?.update(())
     }
 
     func clearOutput(for index: Int) {
         scripts[index].outputLines = []
+
+        // Clear any pending throttled notifications
+        let scriptId = scripts[index].id
+        updateThrottlers[scriptId]?.invalidate()
+        updateThrottlers.removeValue(forKey: scriptId)
+
+        // Immediate UI update for clear action
+        outputUpdateTrigger = UUID()
     }
 
     private func applyBufferLimit(to index: Int) {
@@ -208,14 +211,12 @@ class ScriptManager: ObservableObject {
         let originalHandler = process.terminationHandler
         process.terminationHandler = { proc in
             originalHandler?(proc)
-
             DispatchQueue.main.asyncAfter(deadline: .now() + Configuration.scriptTerminationDelay) {
                 completion?()
             }
         }
 
         process.terminate()
-
         appendOutput(["Process terminated by user"], to: index)
     }
 
@@ -244,14 +245,21 @@ class ScriptManager: ObservableObject {
     }
 
     func terminateAll() {
-        for i in 0..<scripts.count {
-            if scripts[i].process != nil && scripts[i].process!.isRunning {
-                scripts[i].process?.terminate()
-            }
+        for script in scripts {
+            terminateProcessIfRunning(script.process)
         }
 
-        // Clean up notification timer
         notificationTimer?.invalidate()
         notificationTimer = nil
+
+        for throttler in updateThrottlers.values {
+            throttler.invalidate()
+        }
+        updateThrottlers.removeAll()
+    }
+
+    private func terminateProcessIfRunning(_ process: Process?) {
+        guard let process = process, process.isRunning else { return }
+        process.terminate()
     }
 }
