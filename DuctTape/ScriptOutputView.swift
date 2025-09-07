@@ -1,5 +1,5 @@
 //
-//  ScriptOutputWindow.swift
+//  ScriptOutputView.swift
 //  DuctTape
 //
 
@@ -7,7 +7,7 @@ import SwiftUI
 import AppKit
 
 
-struct ScriptOutputWindow: View {
+struct ScriptOutputView: View {
     let scriptId: UUID
     @ObservedObject var scriptManager: ScriptManager
     @State private var showCopiedMessage = false
@@ -233,9 +233,9 @@ class OutputWindowManager: ObservableObject {
 
         window.title = "Output - \(script.url.lastPathComponent)"
         window.isReleasedWhenClosed = false
-        window.setFrameAutosaveName("ScriptOutputWindow_\(script.url.lastPathComponent)")
+        window.setFrameAutosaveName("ScriptOutputView_\(script.url.lastPathComponent)")
 
-        let contentView = ScriptOutputWindow(scriptId: script.id, scriptManager: ScriptManager.shared)
+        let contentView = ScriptOutputView(scriptId: script.id, scriptManager: ScriptManager.shared)
         window.contentView = NSHostingView(rootView: contentView)
 
         // Handle window closing
