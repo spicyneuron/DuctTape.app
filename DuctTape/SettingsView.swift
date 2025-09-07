@@ -37,29 +37,7 @@ struct SettingsView: View {
 
     @State private var showingAlert = false
     @State private var alertMessage = ""
-
-    private var outputMode: OutputMode {
-        switch outputBufferLimit {
-        case 0: return .disabled
-        case -1: return .unlimited
-        default: return .limited
-        }
-    }
-
-    private var limitValue: Int {
-        outputBufferLimit > 0 ? outputBufferLimit : Configuration.outputBufferLimitDefault
-    }
-
-    private func updateOutputSettings(mode: OutputMode, limit: Int) {
-        switch mode {
-        case .disabled:
-            outputBufferLimit = 0
-        case .unlimited:
-            outputBufferLimit = -1
-        case .limited:
-            outputBufferLimit = max(1, limit) // Ensure at least 1 line
-        }
-    }
+    @FocusState private var backgroundFocused: Bool
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
@@ -100,10 +78,9 @@ struct SettingsView: View {
 
                 OutputLimitSettingRow(
                     icon: "doc.text",
-                    title: "Script output buffer",
-                    mode: outputMode,
-                    limitValue: limitValue,
-                    onUpdate: updateOutputSettings
+                    title: "Max output lines",
+                    description: "Kept for sentimental value",
+                    value: $outputBufferLimit
                 )
             }
 
@@ -116,6 +93,14 @@ struct SettingsView: View {
         }
         .frame(minWidth: 320, minHeight: 280, alignment: .topLeading)
         .padding(24)
+        .background(
+            Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    backgroundFocused = true
+                }
+        )
+        .focused($backgroundFocused)
         .alert("Settings Error", isPresented: $showingAlert) {
             Button("OK") { }
         } message: {
@@ -184,90 +169,43 @@ struct SettingRow: View {
     }
 }
 
-enum OutputMode: String, CaseIterable {
-    case limited = "Limited"
-    case unlimited = "Unlimited"
-    case disabled = "Disabled"
-
-    var description: String {
-        switch self {
-        case .limited: return "Memory ain't free"
-        case .unlimited: return "You never know when you'll need it"
-        case .disabled: return "Use the force, Luke!"
-        }
-    }
-}
-
 struct OutputLimitSettingRow: View {
     let icon: String
     let title: String
-    let mode: OutputMode
-    let limitValue: Int
-    let onUpdate: (OutputMode, Int) -> Void
-
-    @State private var selectedMode: OutputMode
-    @State private var inputValue: Int
-
-    init(icon: String, title: String, mode: OutputMode, limitValue: Int, onUpdate: @escaping (OutputMode, Int) -> Void) {
-        self.icon = icon
-        self.title = title
-        self.mode = mode
-        self.limitValue = limitValue
-        self.onUpdate = onUpdate
-        self._selectedMode = State(initialValue: mode)
-        self._inputValue = State(initialValue: limitValue)
+    let description: String
+    @Binding var value: Int
+    @FocusState private var isFocused: Bool
+    
+    private func validateValue() {
+        value = max(0, min(Configuration.outputBufferLimitMax, value))
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 12) {
-                Image(systemName: icon)
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .foregroundColor(.secondary)
+                .frame(width: 20)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.body)
+
+                Text(description)
+                    .font(.caption)
                     .foregroundColor(.secondary)
-                    .frame(width: 20)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.body)
-                    Text(selectedMode.description)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-
-                Spacer()
-
-                if selectedMode == .limited {
-                    TextField("Lines", value: $inputValue, formatter: NumberFormatter())
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .frame(width: 80)
-                        .multilineTextAlignment(.trailing)
-                        .onSubmit {
-                            onUpdate(selectedMode, inputValue)
-                        }
-                        .onChange(of: inputValue) { _, newValue in
-                            // Debounce updates for better UX
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                if inputValue == newValue {
-                                    onUpdate(selectedMode, newValue)
-                                }
-                            }
-                        }
-                }
             }
 
-            HStack {
-                Spacer().frame(width: 32) // Align with title
+            Spacer()
 
-                Picker("", selection: $selectedMode) {
-                    ForEach(OutputMode.allCases, id: \.self) { mode in
-                        Text(mode.rawValue).tag(mode)
-                    }
+            TextField("0-\(Configuration.outputBufferLimitMax)", value: $value, formatter: NumberFormatter())
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .frame(width: 80)
+                .multilineTextAlignment(.trailing)
+                .focused($isFocused)
+                .onSubmit(validateValue)
+                .onChange(of: isFocused) { _, focused in
+                    if !focused { validateValue() }
                 }
-                .pickerStyle(SegmentedPickerStyle())
-                .labelsHidden()
-                .onChange(of: selectedMode) { _, newMode in
-                    onUpdate(newMode, inputValue)
-                }
-            }
         }
     }
 }

@@ -152,7 +152,7 @@ class ScriptManager: ObservableObject {
         let truncatedLines = lines.map { line in
             line.count > characterLimit ? String(line.prefix(characterLimit - 3)) + "..." : line
         }
-        
+
         scripts[index].outputLines.append(contentsOf: truncatedLines)
 
         // Apply buffer limit
