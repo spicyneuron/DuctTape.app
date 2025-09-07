@@ -36,25 +36,6 @@ struct DuctTapeApp: App {
     @StateObject private var outputWindowManager = OutputWindowManager.shared
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
-    private func openSettings() {
-        // Check if settings window already exists using the autosave name
-        if let existingWindow = NSApp.windows.first(where: { $0.frameAutosaveName == "SettingsWindow" }) {
-            existingWindow.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
-            return
-        }
-
-        let window = NSWindow(
-            contentRect: NSRect.zero,
-            styleMask: [.titled, .closable],
-            backing: .buffered, defer: false)
-        window.isReleasedWhenClosed = false
-        window.setFrameAutosaveName("SettingsWindow")
-        window.contentView = NSHostingView(rootView: SettingsView())
-        window.center()
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-    }
 
     var body: some Scene {
         MenuBarExtra {
@@ -139,7 +120,7 @@ struct DuctTapeApp: App {
             Divider()
 
             Button("Settings...") {
-                openSettings()
+                SettingsWindowManager.shared.openSettingsWindow()
             }
             .keyboardShortcut(",", modifiers: .command)
 
@@ -154,7 +135,7 @@ struct DuctTapeApp: App {
         .commands {
             CommandGroup(replacing: .appSettings) {
                 Button("Settings...") {
-                    openSettings()
+                    SettingsWindowManager.shared.openSettingsWindow()
                 }
                 .keyboardShortcut(",", modifiers: .command)
             }

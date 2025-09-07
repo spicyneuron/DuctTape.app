@@ -1,5 +1,34 @@
 import SwiftUI
 import ServiceManagement
+import AppKit
+
+class SettingsWindowManager: ObservableObject {
+    static let shared = SettingsWindowManager()
+
+    private var window: NSWindow?
+
+    func openSettingsWindow() {
+        // Check if settings window already exists using the autosave name
+        if let existingWindow = NSApp.windows.first(where: { $0.frameAutosaveName == "SettingsWindow" }) {
+            existingWindow.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let window = NSWindow(
+            contentRect: NSRect.zero,
+            styleMask: [.titled, .closable],
+            backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.setFrameAutosaveName("SettingsWindow")
+        window.contentView = NSHostingView(rootView: SettingsView())
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+
+        self.window = window
+    }
+}
 
 struct SettingsView: View {
     @AppStorage("openOnLoginUserChoice") private var openOnLogin = false
