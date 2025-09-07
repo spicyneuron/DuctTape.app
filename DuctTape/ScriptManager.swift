@@ -31,23 +31,6 @@ class ScriptManager: ObservableObject {
         }
     }
 
-    // Computed property to get the appropriate SF symbol
-    var appIcon: String {
-        let hasErrors = scripts.contains { $0.status == .error }
-        let runningCount = scripts.count { $0.status == .running }
-        let suffix = hasNewOutput ? ".fill" : ""
-
-        switch (hasErrors, runningCount) {
-        case (true, _):
-            return "exclamationmark.circle\(suffix)"
-        case (false, 0):
-            return "pause.circle"
-        case (false, 1...50):
-            return "\(runningCount).circle\(suffix)"
-        default:
-            return "asterisk.circle\(suffix)"
-        }
-    }
 
     private func loadScripts() -> [ScriptItem] {
         guard let scriptsData = UserDefaults.standard.array(forKey: "savedScriptsData") as? [[String: Any]] else {

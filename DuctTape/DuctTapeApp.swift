@@ -30,6 +30,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+private struct AppIconHelper {
+    static func icon(for scripts: [ScriptItem], hasNewOutput: Bool) -> String {
+        let hasErrors = scripts.contains { $0.status == .error }
+        let runningCount = scripts.count { $0.status == .running }
+        let suffix = hasNewOutput ? ".fill" : ""
+
+        switch (hasErrors, runningCount) {
+        case (true, _):
+            return "exclamationmark.circle\(suffix)"
+        case (false, 0):
+            return "pause.circle"
+        case (false, 1...50):
+            return "\(runningCount).circle\(suffix)"
+        default:
+            return "asterisk.circle\(suffix)"
+        }
+    }
+}
+
 @main
 struct DuctTapeApp: App {
     @StateObject private var scriptManager = ScriptManager.shared
@@ -130,7 +149,7 @@ struct DuctTapeApp: App {
                 NSApplication.shared.terminate(nil)
             }
         } label: {
-            Image(systemName: scriptManager.appIcon)
+            Image(systemName: AppIconHelper.icon(for: scriptManager.scripts, hasNewOutput: scriptManager.hasNewOutput))
         }
         .commands {
             CommandGroup(replacing: .appSettings) {
