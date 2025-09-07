@@ -102,7 +102,6 @@ class ScriptManager: ObservableObject {
 
         scripts[index].process = process
         scripts[index].status = .running
-        clearOutput(for: index)
 
         // Handle output
         let fileHandle = outputPipe.fileHandleForReading
