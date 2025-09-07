@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 
 class ScriptManager: ObservableObject {
     @Published var scripts: [ScriptItem] = []
@@ -34,6 +35,15 @@ class ScriptManager: ObservableObject {
 
     private func loadScripts() -> [ScriptItem] {
         guard let scriptsData = UserDefaults.standard.array(forKey: "savedScriptsData") as? [[String: Any]] else {
+            // Check if the key exists but is corrupted
+            if UserDefaults.standard.object(forKey: "savedScriptsData") != nil {
+                let alert = NSAlert()
+                alert.messageText = "Scripts Couldn't Be Loaded"
+                alert.informativeText = "We couldn't load your saved scripts due to a data issue. You may need to add them again. This can happen after system updates or storage problems."
+                alert.alertStyle = .warning
+                alert.addButton(withTitle: "OK")
+                alert.runModal()
+            }
             return []
         }
 
@@ -126,7 +136,11 @@ class ScriptManager: ObservableObject {
             try process.run()
         } catch {
             scripts[index].status = .error
-            appendOutput(["Failed to run script: \(error.localizedDescription)"], to: index)
+            appendOutput([
+                "Failed to run script: \(script.url.path)",
+                "Error: \(error.localizedDescription)",
+                "Debug info: \(error)"
+            ], to: index)
             fileHandle.readabilityHandler = nil
         }
     }

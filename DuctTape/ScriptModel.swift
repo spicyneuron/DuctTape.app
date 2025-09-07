@@ -25,9 +25,15 @@ struct ScriptItem: Identifiable {
     init(url: URL, autoStart: Bool = false) {
         self.url = url
         self.autoStart = autoStart
-        if !FileManager.default.fileExists(atPath: url.path) {
+
+        do {
+            _ = try FileManager.default.attributesOfItem(atPath: url.path)
+        } catch {
             self.status = .error
-            self.outputLines = ["Error: Script file not found at \(url.path)"]
+            self.outputLines = [
+                "Cannot access script: \(url.path)",
+                "Error: \(error.localizedDescription)"
+            ]
         }
     }
 
