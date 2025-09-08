@@ -55,7 +55,6 @@ struct DuctTapeApp: App {
     @StateObject private var outputWindowManager = OutputWindowManager.shared
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
-
     var body: some Scene {
         MenuBarExtra {
             if !scriptManager.scripts.isEmpty {

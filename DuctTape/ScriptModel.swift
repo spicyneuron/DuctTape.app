@@ -19,8 +19,9 @@ struct ScriptItem: Identifiable {
     let url: URL
     var status: ScriptStatus = .idle
     var process: Process? = nil
-    var outputLines: [String] = []
     var autoStart: Bool = false
+    var outputLines: [String] = []
+    var outputLinesChanged: Bool = false
 
     init(url: URL, autoStart: Bool = false) {
         self.url = url

@@ -32,7 +32,6 @@ class ScriptManager: ObservableObject {
         }
     }
 
-
     private func loadScripts() -> [ScriptItem] {
         guard let scriptsData = UserDefaults.standard.array(forKey: "savedScriptsData") as? [[String: Any]] else {
             // Check if the key exists but is corrupted
@@ -160,6 +159,8 @@ class ScriptManager: ObservableObject {
             scripts[index].outputLines = Array(scripts[index].outputLines.suffix(bufferLimit))
         }
 
+        scripts[index].outputLinesChanged = true
+
         // Throttle UI notifications
         let scriptId = scripts[index].id
         if updateThrottlers[scriptId] == nil {
@@ -183,7 +184,6 @@ class ScriptManager: ObservableObject {
         // Immediate UI update for clear action
         outputUpdateTrigger = UUID()
     }
-
 
     private func handleOutputUpdate() {
         outputUpdateTrigger = UUID() // Trigger UI refresh

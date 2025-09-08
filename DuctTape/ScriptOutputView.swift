@@ -6,12 +6,13 @@
 import SwiftUI
 import AppKit
 
-
 struct ScriptOutputView: View {
     let scriptId: UUID
     @ObservedObject var scriptManager: ScriptManager
     @State private var showCopiedMessage = false
     @State private var scrollPosition = ScrollPosition()
+    @State private var displayedOutput = ""
+    @State private var isLoading = false
 
     private var script: ScriptItem? {
         scriptManager.scripts.first { $0.id == scriptId }
@@ -133,17 +134,10 @@ struct ScriptOutputView: View {
                     // Output area
                     ScrollView {
                         VStack(alignment: .leading) {
-                            if script.outputLines.isEmpty {
-                                Text("No output yet...")
-                                    .foregroundColor(.secondary)
-                                    .font(.system(.body, design: .monospaced))
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            } else {
-                                Text(script.outputLines.joined(separator: "\n"))
-                                    .font(.system(.body, design: .monospaced))
-                                    .textSelection(.enabled)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                            }
+                            Text(script.outputLines.isEmpty ? "No output yet..." : (isLoading ? "Loading..." : displayedOutput))
+                                .font(.system(.body, design: .monospaced))
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .padding()
                     }
@@ -169,6 +163,12 @@ struct ScriptOutputView: View {
         }
         .frame(minWidth: 600, minHeight: 400)
         .background(Color(.windowBackgroundColor))
+        .onReceive(scriptManager.$outputUpdateTrigger) { _ in
+            updateDisplayIfNeeded()
+        }
+        .onAppear {
+            updateDisplayIfNeeded()
+        }
     }
 
     private func copyToClipboard(text: String) {
@@ -206,6 +206,28 @@ struct ScriptOutputView: View {
     private func clearOutput() {
         if let index = scriptManager.scripts.firstIndex(where: { $0.id == scriptId }) {
             scriptManager.clearOutput(for: index)
+            displayedOutput = ""
+        }
+    }
+
+    private func updateDisplayIfNeeded() {
+        guard let script = script, script.outputLinesChanged else { return }
+        guard !isLoading else { return }
+
+        isLoading = true
+        let outputLines = script.outputLines
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            let joined = outputLines.joined(separator: "\n")
+
+            DispatchQueue.main.async {
+                self.displayedOutput = joined
+                self.isLoading = false
+
+                if let index = self.scriptManager.scripts.firstIndex(where: { $0.id == self.scriptId }) {
+                    self.scriptManager.scripts[index].outputLinesChanged = false
+                }
+            }
         }
     }
 }
